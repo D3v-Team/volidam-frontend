@@ -54,24 +54,29 @@ export default function Login() {
                 password: passInput.current.value,
             });
 
-            if (res.status === 200 || res.status === 201) {
-                const data = res.data;
-                login({
-                    token: data.tokens.access_token,
-                    refreshToken: data.tokens.refresh_token,
-                    user: data.user,
-                });
+        if (res.status === 200 || res.status === 201) {
+    const data = res.data;
+    
+    console.log("===== FULL RESPONSE =====", data);
+    console.log("===== ROLE =====", data.user?.role);
+    console.log("===== TOKENS =====", data.tokens);
+    
+    login({
+        token: data.tokens.access_token,
+        refreshToken: data.tokens.refresh_token,
+        user: data.user,
+    });
 
-                if (data.user.role === "SUPER_ADMIN") {
-                    navigate("/superadmin");
-                    toastService.success("Xush kelibsiz, Boss!");
-                } else if (data.user.role === "ADMIN") {
-                    navigate("/");
-                    toastService.success("Muvaffaqiyatli kirdingiz!");
-                } else {
-                    toastService.error("Role mos kelmadi");
-                }
-            }
+    if (data.user.role === "super_admin") {
+        navigate("/superadmin");
+        toastService.success("Xush kelibsiz, Boss!");
+    } else if (data.user.role === "ADMIN") {
+        navigate("/");
+        toastService.success("Muvaffaqiyatli kirdingiz!");
+    } else {
+        toastService.error("Role mos kelmadi");
+    }
+}
         } catch (err) {
             toastService.error(err?.response?.data?.message || "Tizim xatosi");
         } finally {
@@ -84,9 +89,9 @@ export default function Login() {
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap');
 
-                .login-bg {
-                    background: linear-gradient(145deg, #fdf0f5 0%, #fce4ec 35%, #f8bbd0 65%, #fce4ec 85%, #fdf0f5 100%) !important;
-                }
+              .login-bg {
+    background: linear-gradient(145deg, #fff5f5 0%, #fff0f0 35%, #ffcaca 65%, #fff0f0 85%, #fff5f5 100%) !important;
+}
 
                 .login-bg::before {
                     content: "❀  ✿  ❁  ✾  ❀  ✿  ❁";
@@ -321,6 +326,43 @@ export default function Login() {
                     zIndex={1}
                 >
                   
+                  {/* Logo */}
+<Flex justify="center" mb={3} position="relative" zIndex={1}>
+    <Box
+        w="100px" h="100px"
+        borderRadius="full"
+        bg="#CC0000"
+        border="3px solid white"
+        boxShadow="0 4px 16px rgba(180,0,0,0.30)"
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        justifyContent="center"
+    >
+        <Text
+            fontFamily="'DM Sans', sans-serif"
+            fontWeight="700"
+            fontSize="14px"
+            color="white"
+            letterSpacing="0.12em"
+            lineHeight="1"
+        >
+            VOLIDAM
+        </Text>
+        <Text
+            fontFamily="'Cormorant Garamond', serif"
+            fontStyle="italic"
+            fontSize="10px"
+            color="rgba(255,255,255,0.88)"
+            letterSpacing="0.04em"
+            textAlign="center"
+            lineHeight="1.3"
+        >
+            o'quv markazi
+        </Text>
+    </Box>
+</Flex>
+
 
                     <Heading
                         className="login-title"

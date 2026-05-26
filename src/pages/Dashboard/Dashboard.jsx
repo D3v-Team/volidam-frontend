@@ -14,9 +14,6 @@ export default function Dashboard() {
             <Heading size="lg" mb={1} color="text">
                 Bosh sahifa
             </Heading>
-            <Text color="gray.500" mb={8}>
-                Tizim umumiy ko'rinishi
-            </Text>
 
             <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} spacing={5}>
                 {stats.map((s) => (

@@ -8,7 +8,7 @@ const links = [
     { label: "Bosh sahifa", to: "/superadmin", icon: LayoutDashboard, end: true },
     { label: "Adminlar",    to: "/superadmin/admins",     icon: UserCog },
     { label: "Operatorlar", to: "/superadmin/operators",  icon: Headset },
-    { label: "Lidlar",      to: "/superadmin/leads",      icon: TrendingUp },
+    { label: "Lidslar",      to: "/superadmin/ladies",      icon: TrendingUp },
 ];
 
 export default function SuperAdminLayout() {

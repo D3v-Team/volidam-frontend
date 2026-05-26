@@ -17,7 +17,7 @@ function App() {
 
                 <Route path="/" element={<Navigate to="/login" replace />} />
 
-                <Route element={<RequireAuth role="SUPER_ADMIN" />}>
+                <Route element={<RequireAuth role="super_admin" />}>
                     <Route path="/superadmin" element={<SuperAdminLayout />}>
                         {superAdminRoutes.map((r) => (
                             <Route
