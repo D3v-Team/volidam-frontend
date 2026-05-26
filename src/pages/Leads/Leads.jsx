@@ -1,35 +1,10 @@
-import { useLocation } from "react-router-dom";
-import { useAuthStore } from "../../store/authStore";
-import LeadsBoard from "../../components/leads/LeadsBoard";
-import { isAdmin, isOperator, isSuperAdmin } from "../../utils/roles";
+import { Box } from '@chakra-ui/react'
+import React from 'react'
 
-export default function Leads() {
-    const user = useAuthStore((s) => s.user);
-    const role = user?.role;
-    const { pathname } = useLocation();
-
-    const panelLayout =
-        pathname.startsWith("/admin") || pathname.startsWith("/operator");
-
-    const scrollRoleScope = pathname.startsWith("/operator")
-        ? "operator"
-        : pathname.startsWith("/admin")
-          ? "admin"
-          : "superadmin";
-
-    const maxVisibleColumns = isSuperAdmin(role) ? 4 : 5;
-
-    return (
-        <LeadsBoard
-            title="Lidlar"
-            panelLayout={panelLayout}
-            scrollRoleScope={scrollRoleScope}
-            maxVisibleColumns={maxVisibleColumns}
-            canManageStatuses={isSuperAdmin(role)}
-            canManageColumns={isSuperAdmin(role)}
-            canCreateLid={
-                isSuperAdmin(role) || isAdmin(role) || isOperator(role)
-            }
-        />
-    );
+function Leads() {
+  return (
+    <Box>Lidlar</Box>
+  )
 }
+
+export default Leads

@@ -325,7 +325,6 @@ export default function Login() {
                     zIndex={1}
                 >
                   
-                  {/* Logo */}
 <Flex justify="center" mb={3} position="relative" zIndex={1}>
     <Box
         w="100px" h="100px"
@@ -429,7 +428,6 @@ export default function Login() {
                                         onClick={() => setShowPassword((v) => !v)}
                                         aria-label={showPassword ? "Parolni yashirish" : "Parolni ko'rsatish"}
                                     >
-                                        {/* {showPassword ? "🙈" : "👁️"} */}
                                     </button>
                                 </InputRightElement>
                             </InputGroup>

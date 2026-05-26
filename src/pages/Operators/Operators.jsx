@@ -3,12 +3,6 @@ import {
   Box,
   Heading,
   Button,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -26,10 +20,14 @@ import {
   Spinner,
   Center,
   Text,
-  Badge,
+  SimpleGrid,
+  Avatar,
+  Flex,
 } from "@chakra-ui/react";
-import { EditIcon, DeleteIcon, AddIcon, LockIcon } from "@chakra-ui/icons";
+import { EditIcon, DeleteIcon, AddIcon, LockIcon, ChevronLeftIcon } from "@chakra-ui/icons";
+import { useNavigate } from "react-router-dom";
 import { apiUsers } from "../../Services/api/Users";
+// import { ArrowLeft } from "lucide-react";
 
 const emptyForm = {
   full_name: "",
@@ -39,6 +37,8 @@ const emptyForm = {
 };
 
 export default function Operators() {
+  const navigate = useNavigate();
+  
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState(emptyForm);
@@ -135,97 +135,108 @@ export default function Operators() {
 
   return (
     <Box p={6}>
-      <HStack justify="space-between" mb={4}>
-        <Heading size="lg" color="text">
-          Operatorlar
-        </Heading>
-        <Button
-          leftIcon={<AddIcon />}
-          colorScheme="teal"
-          onClick={handleOpenAdd}
-        >
-          Yaratish
-        </Button>
-      </HStack>
+        <HStack justify="space-between" mb={6}>
+    <HStack spacing={2}>
+        <IconButton
+            // icon={<ArrowLeft size={18} />}
+            variant="ghost"
+            aria-label="Orqaga"
+            onClick={() => navigate("/superadmin")}
+        />
+        <Heading size="lg" color="text">Operatorlar</Heading>
+    </HStack>
+    <Button leftIcon={<AddIcon />} colorScheme="blue" onClick={handleOpenAdd}>
+        Yaratish
+    </Button>
+</HStack>
 
       {loading ? (
         <Center py={10}>
           <Spinner size="xl" />
         </Center>
+      ) : users.length === 0 ? (
+        <Center py={10}>
+          <Text color="gray.400">Ma'lumot yo'q</Text>
+        </Center>
       ) : (
-        <Box
-          overflowX="auto"
-          borderRadius="md"
-          border="1px solid"
-          borderColor="gray.200"
-        >
-          <Table variant="simple" size="md">
-            <Thead bg="gray.50">
-              <Tr>
-                <Th>#</Th>
-                <Th>To'liq ism</Th>
-                <Th>Username</Th>
-                <Th>Amallar</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {users.length === 0 ? (   
-                <Tr>
-                  <Td colSpan={4}>
-                    <Center py={6}>
-                      <Text color="gray.400">Ma'lumot yo'q</Text>
-                    </Center>
-                  </Td>
-                </Tr>
-              ) : (
-               users.map((user, index) => (
-  <Tr key={user.id} _hover={{ bg: "gray.50" }}>
-    <Td>{index + 1}</Td>
-    <Td fontWeight="500">{user.full_name}</Td>
-    <Td color="gray.600">{user.username}</Td>
-    <Td>
-      <HStack spacing={2}>
-        <IconButton
-          size="sm"
-          icon={<EditIcon />}
-          colorScheme="blue"
-          variant="ghost"
-          aria-label="Tahrirlash"
-          onClick={() => handleOpenEdit(user)}
-        />
-        <IconButton
-          size="sm"
-          icon={<LockIcon />}
-          colorScheme="orange"
-          variant="ghost"
-          aria-label="Parolni tiklash"
-          onClick={() => {
-            setResetId(user.id);
-            onResetOpen();
-          }}
-        />
-        <IconButton
-          size="sm"
-          icon={<DeleteIcon />}
-          colorScheme="red"
-          variant="ghost"
-          aria-label="O'chirish"
-          onClick={() => {
-            setDeleteId(user.id);
-            onDeleteOpen();
-          }}
-        />
-      </HStack>
-    </Td>
-  </Tr>
-))
-              )}
-            </Tbody>
-          </Table>
-        </Box>
+        <SimpleGrid columns={{ base: 1, sm: 2, lg: 3, xl: 4 }} spacing={4}>
+          {users.map((user) => (
+            <Box
+              key={user.id}
+              bg="surface"
+              border="1px solid"
+              borderColor="border"
+              borderRadius="xl"
+              p={4}
+              transition="box-shadow 0.2s"
+              _hover={{ boxShadow: "md" }}
+            >
+              <Flex align="center" gap={3} mb={4}>
+                <Avatar
+                  size="md"
+                  name={user.full_name}
+                  bg="green.500"
+                  color="white"
+                  flexShrink={0}
+                />
+                <Box minW={0}>
+                  <Text
+                    fontWeight="700"
+                    fontSize="sm"
+                    color="text"
+                    noOfLines={1}
+                  >
+                    {user.full_name}
+                  </Text>
+                  <Text fontSize="xs" color="gray.500" noOfLines={1}>
+                    @{user.username}
+                  </Text>
+                </Box>
+              </Flex>
+
+              <Flex
+                borderTopWidth="1px"
+                borderColor="border"
+                pt={3}
+                justify="flex-end"
+                gap={1}
+              >
+                <IconButton
+                  size="sm"
+                  icon={<EditIcon />}
+                  colorScheme="blue"
+                  variant="ghost"
+                  aria-label="Tahrirlash"
+                  onClick={() => handleOpenEdit(user)}
+                />
+                <IconButton
+                  size="sm"
+                  icon={<LockIcon />}
+                  colorScheme="orange"
+                  variant="ghost"
+                  aria-label="Parolni tiklash"
+                  onClick={() => {
+                    setResetId(user.id);
+                    onResetOpen();
+                  }}
+                />
+                <IconButton
+                  size="sm"
+                  icon={<DeleteIcon />}
+                  colorScheme="red"
+                  variant="ghost"
+                  aria-label="O'chirish"
+                  onClick={() => {
+                    setDeleteId(user.id);
+                    onDeleteOpen();
+                  }}
+                />
+              </Flex>
+            </Box>
+          ))}
+        </SimpleGrid>
       )}
 
-      {/* Add / Edit Modal */}
       <Modal isOpen={isFormOpen} onClose={onFormClose} isCentered>
         <ModalOverlay />
         <ModalContent>
@@ -272,14 +283,13 @@ export default function Operators() {
             <Button variant="ghost" onClick={onFormClose}>
               Bekor qilish
             </Button>
-            <Button colorScheme="teal" onClick={handleSubmit}>
+            <Button colorScheme="green" onClick={handleSubmit}>
               {editId ? "Saqlash" : "Qo'shish"}
             </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
 
-      {/* Delete Confirm Modal */}
       <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} isCentered size="sm">
         <ModalOverlay />
         <ModalContent>
@@ -299,7 +309,6 @@ export default function Operators() {
         </ModalContent>
       </Modal>
 
-      {/* Reset Password Modal */}
       <Modal isOpen={isResetOpen} onClose={onResetClose} isCentered size="sm">
         <ModalOverlay />
         <ModalContent>
@@ -329,4 +338,3 @@ export default function Operators() {
     </Box>
   );
 }
-
