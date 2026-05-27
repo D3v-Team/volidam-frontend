@@ -1,3 +1,4 @@
+export { default as UserCard } from "./UserCard";
 export { default as VolidamModalShell, useVolidamModalChrome } from "./VolidamModalShell";
 export {
     filterFieldProps,

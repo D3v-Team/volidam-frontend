@@ -176,9 +176,6 @@ export default function Sidebar({ collapsed, links = [], role, end = false }) {
                                                 <Text fontSize="sm" fontWeight="bold" lineHeight={1} >
                                                     {user?.full_name}
                                                 </Text>
-                                                <Text fontSize="xs" color="gray.400">
-                                                    {user?.role}
-                                                </Text>
                                             </Box>
                                         </Flex>
                                     )}

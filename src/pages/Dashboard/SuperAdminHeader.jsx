@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
-import { getRoleLabel } from "../../utils/roles";
 import LogoutModal from "../../components/common/LogoutModal";
 
 const NAV_LINKS = [
@@ -34,7 +33,7 @@ const NAV_LINKS = [
     to: "/superadmin/operators",
     icon: <Headset size={16} />,
   },
-  { label: "Lidslar", to: "/superadmin/leads/:id", icon: <Users size={16} /> },
+  { label: "Lidlar", to: "/superadmin/leads", icon: <Users size={16} /> },
 ];
 
 export default function SuperAdminHeader() {
@@ -134,9 +133,6 @@ export default function SuperAdminHeader() {
           <Box lineHeight="short" minW={0}>
             <Text fontSize="sm" fontWeight="600" color="text" noOfLines={1}>
               {user?.full_name}
-            </Text>
-            <Text fontSize="xs" color="gray.500" noOfLines={1}>
-              {getRoleLabel(user?.role)}
             </Text>
           </Box>
         </HStack>

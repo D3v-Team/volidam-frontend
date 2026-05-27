@@ -10,7 +10,6 @@ import {
 } from "@chakra-ui/react";
 import { TrendingUp, SunMoon } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
-import { getRoleLabel } from "../../utils/roles";
 import LogoutModal from "./LogoutModal";
 
 export default function LeadsPanelHeader() {
@@ -58,9 +57,6 @@ export default function LeadsPanelHeader() {
                     <Box lineHeight="short" minW={0}>
                         <Text fontSize="sm" fontWeight="600" color="text" noOfLines={1}>
                             {user?.full_name}
-                        </Text>
-                        <Text fontSize="xs" color="gray.500" noOfLines={1}>
-                            {getRoleLabel(user?.role)}
                         </Text>
                     </Box>
                 </HStack>

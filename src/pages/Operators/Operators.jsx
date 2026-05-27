@@ -21,27 +21,17 @@ import {
   Center,
   Text,
   SimpleGrid,
-  Avatar,
-  Flex,
 } from "@chakra-ui/react";
 import {
-  EditIcon,
-  DeleteIcon,
   AddIcon,
-  LockIcon,
   ChevronLeftIcon,
 } from "@chakra-ui/icons";
 import { useNavigate } from "react-router-dom";
 import { apiUsers } from "../../Services/api/Users";
+import UserCard from "../../components/ui/UserCard";
 import {
-  dataTableContainerProps,
-  dataTableHeadRowProps,
-  dataTableRowHoverProps,
   volidamPrimaryButton,
   volidamGhostButton,
-  volidamEditIconButton,
-  volidamLockIconButton,
-  volidamDeleteIconButton,
   volidamModalCloseButton,
 } from "../../components/ui/volidamUi";
 
@@ -151,19 +141,21 @@ export default function Operators() {
 
   return (
     <Box p={6}>
-      <HStack justify="space-between" mb={6}>
+      <HStack justify="space-between" mb={4}>
         <HStack spacing={2}>
           <IconButton
-            // icon={<ArrowLeft size={18} />}
+            icon={<ChevronLeftIcon />}
             variant="ghost"
             aria-label="Orqaga"
             onClick={() => navigate("/superadmin")}
           />
+          <Heading size="lg" color="text">
+            Operatorlar
+          </Heading>
         </HStack>
         <Button
           leftIcon={<AddIcon />}
           {...volidamPrimaryButton}
-          colorScheme="blue"
           onClick={handleOpenAdd}
         >
           Yaratish
@@ -176,68 +168,26 @@ export default function Operators() {
         </Center>
       ) : users.length === 0 ? (
         <Center py={10}>
-          <Text color="gray.400">Ma'lumot yo'q</Text>
+          <Text color="textSecondary">Ma&apos;lumot yo&apos;q</Text>
         </Center>
       ) : (
-        <Box {...dataTableContainerProps}>
-          <Table variant="simple" size="md">
-            <Thead {...dataTableHeadRowProps}>
-              <Tr>
-                <Th>#</Th>
-                <Th>To'liq ism</Th>
-                <Th>Username</Th>
-                <Th>Amallar</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {users.length === 0 ? (   
-                <Tr>
-                  <Td colSpan={4}>
-                    <Center py={6}>
-                      <Text color="textSecondary">Ma'lumot yo'q</Text>
-                    </Center>
-                  </Td>
-                </Tr>
-              ) : (
-               users.map((user, index) => (
-  <Tr key={user.id} {...dataTableRowHoverProps}>
-    <Td>{index + 1}</Td>
-    <Td fontWeight="500">{user.full_name}</Td>
-    <Td color="textSecondary">{user.username}</Td>
-    <Td>
-      <HStack spacing={2}>
-        <IconButton
-          {...volidamEditIconButton}
-          icon={<EditIcon />}
-          aria-label="Tahrirlash"
-          onClick={() => handleOpenEdit(user)}
-        />
-        <IconButton
-          {...volidamLockIconButton}
-          icon={<LockIcon />}
-          aria-label="Parolni tiklash"
-          onClick={() => {
-            setResetId(user.id);
-            onResetOpen();
-          }}
-        />
-        <IconButton
-          {...volidamDeleteIconButton}
-          icon={<DeleteIcon />}
-          aria-label="O'chirish"
-          onClick={() => {
-            setDeleteId(user.id);
-            onDeleteOpen();
-          }}
-        />
-      </HStack>
-    </Td>
-  </Tr>
-))
-              )}
-            </Tbody>
-          </Table>
-        </Box>
+        <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={4}>
+          {users.map((user) => (
+            <UserCard
+              key={user.id}
+              user={user}
+              onEdit={handleOpenEdit}
+              onResetPassword={(u) => {
+                setResetId(u.id);
+                onResetOpen();
+              }}
+              onDelete={(u) => {
+                setDeleteId(u.id);
+                onDeleteOpen();
+              }}
+            />
+          ))}
+        </SimpleGrid>
       )}
 
       <Modal isOpen={isFormOpen} onClose={onFormClose} isCentered>
