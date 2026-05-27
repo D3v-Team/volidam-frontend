@@ -8,7 +8,6 @@ import {
     Checkbox,
     NumberInput,
     NumberInputField,
-    Switch,
     Text,
     FormErrorMessage,
 } from "@chakra-ui/react";
@@ -26,7 +25,6 @@ import {
 const ROLE_OPTIONS = [
     { value: ROLES.OPERATOR, label: "Operator" },
     { value: ROLES.ADMIN, label: "Admin" },
-    { value: ROLES.SUPER_ADMIN, label: "Super Admin" },
 ];
 
 const empty = {
@@ -60,10 +58,12 @@ export default function LidStatusFormModal({
         if (mode === "edit" && initialData) {
             setForm({
                 name: initialData.name || "",
-                roles: normalizeStatusRoles(initialData.roles),
+                roles: normalizeStatusRoles(initialData.roles).filter(
+                    (r) => r !== ROLES.SUPER_ADMIN
+                ),
                 color: initialData.color || "#888780",
                 order: initialData.order ?? 0,
-                is_default: !!initialData.is_default,
+                is_default: false,
             });
         } else {
             setForm({ ...empty, order: nextOrder });
@@ -90,10 +90,11 @@ export default function LidStatusFormModal({
         }
         await onSubmit({
             name: form.name.trim(),
-            roles: form.roles,
+            roles: form.roles.filter((r) => r !== ROLES.SUPER_ADMIN),
             color: normalizeHex(form.color),
             order: Number(form.order),
-            is_default: form.is_default,
+            // UI ko'rsatmaymiz — doim false yuboramiz
+            is_default: false,
         });
     };
 
@@ -192,22 +193,6 @@ export default function LidStatusFormModal({
                             ))}
                         </VStack>
                         <FormErrorMessage>{roleError}</FormErrorMessage>
-                    </FormControl>
-
-                    <FormControl display="flex" alignItems="center" gap={3}>
-                        <Switch
-                            isChecked={form.is_default}
-                            onChange={(e) =>
-                                setForm((p) => ({
-                                    ...p,
-                                    is_default: e.target.checked,
-                                }))
-                            }
-                            colorScheme="pink"
-                        />
-                        <FormLabel mb={0} fontSize="sm">
-                            Default status
-                        </FormLabel>
                     </FormControl>
                 </VStack>
             </form>

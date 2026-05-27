@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
     Box,
-    Heading,
     Button,
     Modal,
     ModalOverlay,
@@ -122,10 +121,7 @@ export default function Admins() {
 
     return (
         <Box p={6}>
-            <HStack justify="space-between" mb={4}>
-                <Heading size="lg" color="text">
-                    Adminlar
-                </Heading>
+            <HStack justify="flex-end" mb={4}>
                 <Button leftIcon={<AddIcon />} {...volidamPrimaryButton} onClick={handleOpenAdd}>
                     Yaratish
                 </Button>
@@ -140,7 +136,7 @@ export default function Admins() {
                     <Text color="textSecondary">Ma&apos;lumot yo&apos;q</Text>
                 </Center>
             ) : (
-                <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={4}>
+                <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={4}>
                     {users.map((user) => (
                         <UserCard
                             key={user.id}

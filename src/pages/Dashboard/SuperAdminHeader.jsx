@@ -17,7 +17,7 @@ import {
   Headset,
   Users,
 } from "lucide-react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
 import LogoutModal from "../../components/common/LogoutModal";
 
@@ -44,14 +44,10 @@ export default function SuperAdminHeader() {
   const activeColor = useColorModeValue("blue.600", "blue.300");
   const hoverBg = useColorModeValue("gray.100", "whiteAlpha.100");
   const { pathname } = useLocation();
-  const navigate = useNavigate();
 
   const showBack = pathname !== "/superadmin";
-
   const currentPage = NAV_LINKS.find((l) =>
-    l.to === "/superadmin"
-      ? pathname === "/superadmin"
-      : pathname.startsWith(l.to),
+    l.to === "/superadmin" ? pathname === "/superadmin" : pathname.startsWith(l.to),
   );
 
   return (
@@ -73,7 +69,6 @@ export default function SuperAdminHeader() {
       flexShrink={0}
     >
       <HStack spacing={2} minW={0} flexShrink={0}>
-      
         <Box color="blue.500" pl={"80px"} >
           {showBack ? currentPage?.icon : <TrendingUp size={20} />}
         </Box>

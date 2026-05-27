@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   Box,
-  Heading,
   Button,
   Modal,
   ModalOverlay,
@@ -24,7 +23,6 @@ import {
 } from "@chakra-ui/react";
 import {
   AddIcon,
-  ChevronLeftIcon,
 } from "@chakra-ui/icons";
 import { useNavigate } from "react-router-dom";
 import { apiUsers } from "../../Services/api/Users";
@@ -141,18 +139,7 @@ export default function Operators() {
 
   return (
     <Box p={6}>
-      <HStack justify="space-between" mb={4}>
-        <HStack spacing={2}>
-          <IconButton
-            icon={<ChevronLeftIcon />}
-            variant="ghost"
-            aria-label="Orqaga"
-            onClick={() => navigate("/superadmin")}
-          />
-          <Heading size="lg" color="text">
-            Operatorlar
-          </Heading>
-        </HStack>
+      <HStack justify="flex-end" mb={4}>
         <Button
           leftIcon={<AddIcon />}
           {...volidamPrimaryButton}
@@ -171,7 +158,7 @@ export default function Operators() {
           <Text color="textSecondary">Ma&apos;lumot yo&apos;q</Text>
         </Center>
       ) : (
-        <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={4}>
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={4}>
           {users.map((user) => (
             <UserCard
               key={user.id}

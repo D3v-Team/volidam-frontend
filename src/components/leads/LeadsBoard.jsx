@@ -30,6 +30,7 @@ export default function LeadsBoard({
     canManageStatuses = false,
     canManageColumns = false,
     canCreateLid = true,
+    canDeleteLid = true,
     title = "Lidlar",
     panelLayout = false,
     scrollRoleScope = "default",
@@ -253,12 +254,6 @@ export default function LeadsBoard({
                 onSearchChange={setSearch}
             />
 
-            {moving && (
-                <Text fontSize="xs" color={subtleText} mb={2}>
-                    Status yangilanmoqda...
-                </Text>
-            )}
-
             {loading && allStatuses.length === 0 ? (
                 <Flex justify="center" py={20}>
                     <Spinner size="lg" color="brand.500" thickness="3px" />
@@ -284,7 +279,7 @@ export default function LeadsBoard({
                     onOpenLid={(lid) => {
                         navigate(getLeadDetailPath(leadsBasePath, lid.id));
                     }}
-                    onDeleteLid={requestDeleteLid}
+                    onDeleteLid={canDeleteLid ? requestDeleteLid : undefined}
                     onEditStatus={(s) => {
                         setStatusFormMode("edit");
                         setSelectedStatus(s);
@@ -317,16 +312,18 @@ export default function LeadsBoard({
                 loading={actionLoading}
                 mode="create"
             />
-            <ConfirmDelModal
-                isOpen={Boolean(deleteLidTarget)}
-                onClose={() => {
-                    if (!actionLoading) setDeleteLidTarget(null);
-                }}
-                onConfirm={confirmDeleteLid}
-                itemName={deleteLidTarget?.fio || deleteLidTarget?.telefon_raqam}
-                loading={actionLoading}
-                typeItem="lid"
-            />
+            {canDeleteLid ? (
+                <ConfirmDelModal
+                    isOpen={Boolean(deleteLidTarget)}
+                    onClose={() => {
+                        if (!actionLoading) setDeleteLidTarget(null);
+                    }}
+                    onConfirm={confirmDeleteLid}
+                    itemName={deleteLidTarget?.fio || deleteLidTarget?.telefon_raqam}
+                    loading={actionLoading}
+                    typeItem="lid"
+                />
+            ) : null}
             <ConfirmDelModal
                 isOpen={Boolean(deleteStatusTarget)}
                 onClose={() => {

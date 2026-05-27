@@ -7,9 +7,7 @@ import {
     useColorModeValue,
 } from "@chakra-ui/react";
 import { Phone, Trash2 } from "lucide-react";
-import { countFilledLidValues } from "../../utils/lidColumns";
 import { LEAD_CARD_MIN_H_COMPACT, volidamDangerIconButton } from "./leadStyles";
-import LeadCardValuesPreview from "./LeadCardValuesPreview";
 
 export default function LeadCard({ lid, onOpen, onDelete, isDragging }) {
     const borderColor = useColorModeValue("rgba(244, 143, 177, 0.4)", "whiteAlpha.200");
@@ -19,8 +17,7 @@ export default function LeadCard({ lid, onOpen, onDelete, isDragging }) {
 
     const title = lid.fio?.trim() || "—";
     const phone = lid.telefon_raqam?.trim() || "";
-    const hasValues = countFilledLidValues(lid) > 0;
-    const hasFooter = hasValues || !!phone;
+    const hasFooter = !!phone;
 
     return (
         <Box
@@ -101,19 +98,6 @@ export default function LeadCard({ lid, onOpen, onDelete, isDragging }) {
                     mt="auto"
                 >
                     <LeadCardPhone phone={phone} phoneColor={phoneColor} />
-                    {hasValues ? (
-                        <Flex
-                            direction="row-reverse"
-                            flexWrap="wrap"
-                            justify="flex-end"
-                            gap={1.5}
-                            flex="0 1 auto"
-                            minW={0}
-                            maxW="100%"
-                        >
-                            <LeadCardValuesPreview lid={lid} inline />
-                        </Flex>
-                    ) : null}
                 </Flex>
             ) : null}
         </Box>

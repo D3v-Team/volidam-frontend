@@ -240,7 +240,7 @@ export default function LeadDetailPage() {
                         <Grid
                             templateColumns={{
                                 base: "1fr",
-                                xl: "1fr minmax(280px, 320px)",
+                                xl: canManageColumns ? "1fr minmax(280px, 320px)" : "1fr",
                             }}
                             gap={{ base: 4, md: 6 }}
                             w="100%"
@@ -258,20 +258,22 @@ export default function LeadDetailPage() {
                                 />
                             </GridItem>
 
-                            <GridItem minW={0} w="100%">
-                                <Box
-                                    position={{ base: "static", xl: "sticky" }}
-                                    top={4}
-                                >
-                                    <LidColumnsManageSection
-                                        columns={columnDefs}
-                                        loading={fetching}
-                                        onRefresh={loadData}
-                                        canManage={canManageColumns}
-                                        canEditColumn={false}
-                                    />
-                                </Box>
-                            </GridItem>
+                            {canManageColumns ? (
+                                <GridItem minW={0} w="100%">
+                                    <Box
+                                        position={{ base: "static", xl: "sticky" }}
+                                        top={4}
+                                    >
+                                        <LidColumnsManageSection
+                                            columns={columnDefs}
+                                            loading={fetching}
+                                            onRefresh={loadData}
+                                            canManage={canManageColumns}
+                                            canEditColumn={false}
+                                        />
+                                    </Box>
+                                </GridItem>
+                            ) : null}
                         </Grid>
                     </VStack>
                 )}
