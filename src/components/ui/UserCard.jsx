@@ -46,7 +46,7 @@ export default function UserCard({
             <Flex align="flex-start" gap={3}>
                 <Avatar
                     name={user.full_name}
-                    size="md"
+                    size="lg"
                     bg="brand.500"
                     color="white"
                     flexShrink={0}

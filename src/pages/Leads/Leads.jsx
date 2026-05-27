@@ -18,6 +18,7 @@ export default function Leads() {
             : "superadmin";
 
     const maxVisibleColumns = isSuperAdmin(role) ? 4 : 5;
+    const canDeleteLid = isSuperAdmin(role);
 
     return (
         <LeadsBoard
@@ -28,6 +29,7 @@ export default function Leads() {
             canManageStatuses={isSuperAdmin(role)}
             canManageColumns={isSuperAdmin(role)}
             canCreateLid={isSuperAdmin(role) || isAdmin(role) || isOperator(role)}
+            canDeleteLid={canDeleteLid}
         />
     );
 }

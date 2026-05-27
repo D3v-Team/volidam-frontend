@@ -34,15 +34,7 @@ class apiLids {
 
     static updateStatus = async (id, statusId) => {
         const body = { status_id: statusId };
-        try {
-            return await $api.patch(`/lids/${id}/status`, body);
-        } catch (err) {
-            const code = err?.response?.status;
-            if (code === 404 || code === 405 || code === 501) {
-                return await $api.put(`/lids/${id}/status`, body);
-            }
-            throw err;
-        }
+        return await $api.put(`/lids/${id}/status`, body);
     };
 }
 
