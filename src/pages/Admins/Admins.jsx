@@ -1,12 +1,38 @@
 import { useEffect, useState } from "react";
 import {
-  Box, Heading, Button, Modal, ModalOverlay, ModalContent,
-  ModalHeader, ModalBody, ModalFooter, ModalCloseButton,
-  useDisclosure, Input, FormControl, FormLabel, IconButton,
-  HStack, useToast, Spinner, Center, Text, Badge,
-  SimpleGrid, Avatar, Flex,
+  Box,
+  Heading,
+  Button,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+  useDisclosure,
+  Input,
+  FormControl,
+  FormLabel,
+  IconButton,
+  HStack,
+  useToast,
+  Spinner,
+  Center,
+  Text,
+  Badge,
+  SimpleGrid,
+  Avatar,
+  Flex,
+  Grid,
 } from "@chakra-ui/react";
-import { EditIcon, DeleteIcon, AddIcon, LockIcon, ChevronLeftIcon } from "@chakra-ui/icons";
+import {
+  EditIcon,
+  DeleteIcon,
+  AddIcon,
+  LockIcon,
+  ChevronLeftIcon,
+} from "@chakra-ui/icons";
 import { useNavigate } from "react-router-dom";
 import { apiUsers } from "../../Services/api/Users";
 // import { ArrowLeft } from "lucide-react";
@@ -17,7 +43,6 @@ const emptyForm = {
   password: "",
   role: "admin",
 };
-
 
 const roleColor = (role) => {
   switch (role) {
@@ -31,7 +56,7 @@ const roleColor = (role) => {
 };
 
 export default function Admins() {
-const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -129,20 +154,23 @@ const navigate = useNavigate();
 
   return (
     <Box p={6}>
-     <HStack justify="space-between" mb={6}>
-    <HStack spacing={2}>
-        <IconButton
+      <HStack justify="space-between" mb={6}>
+        <HStack spacing={2}>
+          <IconButton
             // icon={<ArrowLeft size={18} />}
             variant="ghost"
             aria-label="Orqaga"
             onClick={() => navigate("/superadmin")}
-        />
-        <Heading size="lg" color="text">Adminlar</Heading>
-    </HStack>
-    <Button leftIcon={<AddIcon />} colorScheme="blue" onClick={handleOpenAdd}>
-        Yaratish
-    </Button>
-</HStack>
+          />
+        </HStack>
+        <Button
+          leftIcon={<AddIcon />}
+          colorScheme="blue"
+          onClick={handleOpenAdd}
+        >
+          Yaratish
+        </Button>
+      </HStack>
 
       {loading ? (
         <Center py={10}>
@@ -160,23 +188,24 @@ const navigate = useNavigate();
               bg="surface"
               border="1px solid"
               borderColor="border"
-              borderRadius="xl"
-              p={4}
-              transition="box-shadow 0.2s"
-              _hover={{ boxShadow: "md" }}
+              borderRadius="lg"
+              px={3}
+              py={3}
+              maxW="480px"
             >
-              <Flex align="center" gap={3} mb={3}>
+              <Flex align="center" gap={3}>
                 <Avatar
-                  size="md"
+                  size="sm"
                   name={user.full_name}
                   bg="red.500"
                   color="white"
                   flexShrink={0}
                 />
-                <Box minW={0}>
+
+                <Box flex={1} minW={0}>
                   <Text
-                    fontWeight="700"
                     fontSize="sm"
+                    fontWeight="500"
                     color="text"
                     noOfLines={1}
                   >
@@ -186,56 +215,46 @@ const navigate = useNavigate();
                     @{user.username}
                   </Text>
                 </Box>
-              </Flex>
 
-              <Badge
-                colorScheme={roleColor(user.role)}
-                borderRadius="md"
-                px={2}
-                py={0.5}
-                fontSize="xs"
-                mb={3}
-              >
-                {user.role}
-              </Badge>
-
-              <Flex
-                borderTopWidth="1px"
-                borderColor="border"
-                pt={3}
-                justify="flex-end"
-                gap={1}
-              >
-                <IconButton
-                  size="sm"
-                  icon={<EditIcon />}
-                  colorScheme="blue"
-                  variant="ghost"
-                  aria-label="Tahrirlash"
-                  onClick={() => handleOpenEdit(user)}
-                />
-                <IconButton
-                  size="sm"
-                  icon={<LockIcon />}
-                  colorScheme="orange"
-                  variant="ghost"
-                  aria-label="Parolni tiklash"
-                  onClick={() => {
-                    setResetId(user.id);
-                    onResetOpen();
-                  }}
-                />
-                <IconButton
-                  size="sm"
-                  icon={<DeleteIcon />}
-                  colorScheme="red"
-                  variant="ghost"
-                  aria-label="O'chirish"
-                  onClick={() => {
-                    setDeleteId(user.id);
-                    onDeleteOpen();
-                  }}
-                />
+                <Flex
+                  align="center"
+                  gap={1}
+                  flexShrink={0}
+                  borderLeft="1px solid"
+                  borderColor="border"
+                  pl={3}
+                >
+                  <IconButton
+                    size="xs"
+                    icon={<EditIcon />}
+                    colorScheme="blue"
+                    variant="ghost"
+                    aria-label="Tahrirlash"
+                    onClick={() => handleOpenEdit(user)}
+                  />
+                  <IconButton
+                    size="xs"
+                    icon={<LockIcon />}
+                    colorScheme="orange"
+                    variant="ghost"
+                    aria-label="Parolni tiklash"
+                    onClick={() => {
+                      setResetId(user.id);
+                      onResetOpen();
+                    }}
+                  />
+                  <IconButton
+                    size="xs"
+                    icon={<DeleteIcon />}
+                    colorScheme="red"
+                    variant="ghost"
+                    aria-label="O'chirish"
+                    onClick={() => {
+                      setDeleteId(user.id);
+                      onDeleteOpen();
+                    }}
+                  />
+                </Flex>
               </Flex>
             </Box>
           ))}

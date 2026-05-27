@@ -9,18 +9,32 @@ import {
   useColorModeValue,
   Button,
 } from "@chakra-ui/react";
-import { TrendingUp, SunMoon } from "lucide-react";
+import {
+  TrendingUp,
+  SunMoon,
+  Home,
+  ShieldCheck,
+  Headset,
+  Users,
+} from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
 import { getRoleLabel } from "../../utils/roles";
 import LogoutModal from "../../components/common/LogoutModal";
-import { ChevronLeftIcon } from "@chakra-ui/icons";
 
 const NAV_LINKS = [
-  { label: "Bosh sahifa", to: "/superadmin" },
-  { label: "Adminlar", to: "/superadmin/admins" },
-  { label: "Operatorlar", to: "/superadmin/operators" },
-  { label: "Lidslar", to: "/superadmin/leads" },
+  { label: "Bosh sahifa", to: "/superadmin", icon: <Home size={16} /> },
+  {
+    label: "Adminlar",
+    to: "/superadmin/admins",
+    icon: <ShieldCheck size={16} />,
+  },
+  {
+    label: "Operatorlar",
+    to: "/superadmin/operators",
+    icon: <Headset size={16} />,
+  },
+  { label: "Lidslar", to: "/superadmin/leads/:id", icon: <Users size={16} /> },
 ];
 
 export default function SuperAdminHeader() {
@@ -60,20 +74,10 @@ export default function SuperAdminHeader() {
       flexShrink={0}
     >
       <HStack spacing={2} minW={0} flexShrink={0}>
-        {showBack ? (
-          <IconButton
-            aria-label="Orqaga"
-            icon={<ChevronLeftIcon boxSize={5} />}
-            variant="ghost"
-            borderRadius="lg"
-            size="sm"
-            onClick={() => navigate("/superadmin")}
-          />
-        ) : (
-          <Box color="blue.500">
-            <TrendingUp size={22} />
-          </Box>
-        )}
+      
+        <Box color="blue.500" pl={"80px"} >
+          {showBack ? currentPage?.icon : <TrendingUp size={20} />}
+        </Box>
         <Text fontWeight="800" fontSize="md" color="text" noOfLines={1}>
           {showBack ? (currentPage?.label ?? "Volidam") : "Volidam"}
         </Text>
@@ -100,6 +104,7 @@ export default function SuperAdminHeader() {
               variant="ghost"
               borderRadius="lg"
               px={3}
+              leftIcon={link.icon}
               fontWeight={isActive ? "700" : "500"}
               bg={isActive ? activeBg : "transparent"}
               color={isActive ? activeColor : "text"}

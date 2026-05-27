@@ -1,7 +1,7 @@
 import Dashboard from "../pages/Dashboard/Dashboard";
 import Admins from "../pages/Admins/Admins";
 import Operators from "../pages/Operators/Operators";
-import Leads from "../pages/Leads/Leads";
+// import Leads from "../pages/Leads/Leads";
 import LeadDetailPage from "../pages/Leads/LeadDetailPage";
 
 const superAdminRoutes = [
@@ -21,11 +21,11 @@ const superAdminRoutes = [
         path: "operators",
         element: <Operators />,
     },
-    {
-        name: "leads",
-        path: "leads",
-        element: <Leads />,
-    },
+    // {
+    //     name: "leads",
+    //     path: "leads",
+    //     element: <Leads />,
+    // },
     {
         name: "leadDetail",
         path: "leads/:id",

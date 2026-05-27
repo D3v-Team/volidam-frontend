@@ -24,7 +24,13 @@ import {
   Avatar,
   Flex,
 } from "@chakra-ui/react";
-import { EditIcon, DeleteIcon, AddIcon, LockIcon, ChevronLeftIcon } from "@chakra-ui/icons";
+import {
+  EditIcon,
+  DeleteIcon,
+  AddIcon,
+  LockIcon,
+  ChevronLeftIcon,
+} from "@chakra-ui/icons";
 import { useNavigate } from "react-router-dom";
 import { apiUsers } from "../../Services/api/Users";
 // import { ArrowLeft } from "lucide-react";
@@ -38,7 +44,7 @@ const emptyForm = {
 
 export default function Operators() {
   const navigate = useNavigate();
-  
+
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState(emptyForm);
@@ -135,20 +141,23 @@ export default function Operators() {
 
   return (
     <Box p={6}>
-        <HStack justify="space-between" mb={6}>
-    <HStack spacing={2}>
-        <IconButton
+      <HStack justify="space-between" mb={6}>
+        <HStack spacing={2}>
+          <IconButton
             // icon={<ArrowLeft size={18} />}
             variant="ghost"
             aria-label="Orqaga"
             onClick={() => navigate("/superadmin")}
-        />
-        <Heading size="lg" color="text">Operatorlar</Heading>
-    </HStack>
-    <Button leftIcon={<AddIcon />} colorScheme="blue" onClick={handleOpenAdd}>
-        Yaratish
-    </Button>
-</HStack>
+          />
+        </HStack>
+        <Button
+          leftIcon={<AddIcon />}
+          colorScheme="blue"
+          onClick={handleOpenAdd}
+        >
+          Yaratish
+        </Button>
+      </HStack>
 
       {loading ? (
         <Center py={10}>
@@ -166,23 +175,24 @@ export default function Operators() {
               bg="surface"
               border="1px solid"
               borderColor="border"
-              borderRadius="xl"
-              p={4}
-              transition="box-shadow 0.2s"
-              _hover={{ boxShadow: "md" }}
+              borderRadius="lg"
+              px={3}
+              py={3}
+              maxW="480px"
             >
-              <Flex align="center" gap={3} mb={4}>
+              <Flex align="center" gap={3}>
                 <Avatar
-                  size="md"
+                  size="sm"
                   name={user.full_name}
-                  bg="green.500"
+                  bg="red.500"
                   color="white"
                   flexShrink={0}
                 />
-                <Box minW={0}>
+
+                <Box flex={1} minW={0}>
                   <Text
-                    fontWeight="700"
                     fontSize="sm"
+                    fontWeight="500"
                     color="text"
                     noOfLines={1}
                   >
@@ -192,45 +202,46 @@ export default function Operators() {
                     @{user.username}
                   </Text>
                 </Box>
-              </Flex>
 
-              <Flex
-                borderTopWidth="1px"
-                borderColor="border"
-                pt={3}
-                justify="flex-end"
-                gap={1}
-              >
-                <IconButton
-                  size="sm"
-                  icon={<EditIcon />}
-                  colorScheme="blue"
-                  variant="ghost"
-                  aria-label="Tahrirlash"
-                  onClick={() => handleOpenEdit(user)}
-                />
-                <IconButton
-                  size="sm"
-                  icon={<LockIcon />}
-                  colorScheme="orange"
-                  variant="ghost"
-                  aria-label="Parolni tiklash"
-                  onClick={() => {
-                    setResetId(user.id);
-                    onResetOpen();
-                  }}
-                />
-                <IconButton
-                  size="sm"
-                  icon={<DeleteIcon />}
-                  colorScheme="red"
-                  variant="ghost"
-                  aria-label="O'chirish"
-                  onClick={() => {
-                    setDeleteId(user.id);
-                    onDeleteOpen();
-                  }}
-                />
+                <Flex
+                  align="center"
+                  gap={1}
+                  flexShrink={0}
+                  borderLeft="1px solid"
+                  borderColor="border"
+                  pl={3}
+                >
+                  <IconButton
+                    size="xs"
+                    icon={<EditIcon />}
+                    colorScheme="blue"
+                    variant="ghost"
+                    aria-label="Tahrirlash"
+                    onClick={() => handleOpenEdit(user)}
+                  />
+                  <IconButton
+                    size="xs"
+                    icon={<LockIcon />}
+                    colorScheme="orange"
+                    variant="ghost"
+                    aria-label="Parolni tiklash"
+                    onClick={() => {
+                      setResetId(user.id);
+                      onResetOpen();
+                    }}
+                  />
+                  <IconButton
+                    size="xs"
+                    icon={<DeleteIcon />}
+                    colorScheme="red"
+                    variant="ghost"
+                    aria-label="O'chirish"
+                    onClick={() => {
+                      setDeleteId(user.id);
+                      onDeleteOpen();
+                    }}
+                  />
+                </Flex>
               </Flex>
             </Box>
           ))}
