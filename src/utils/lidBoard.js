@@ -6,6 +6,8 @@ export function normalizeLidFromApi(lid) {
     return {
         ...lid,
         status_id: lid.status_id ?? lid.status?.id ?? "",
+        createdAt: lid.createdAt ?? lid.created_at ?? null,
+        updatedAt: lid.updatedAt ?? lid.updated_at ?? null,
         created_by_name:
             lid.creator?.full_name ??
             lid.created_by_name ??

@@ -1,3 +1,4 @@
+import { Navigate } from "react-router-dom";
 import Dashboard from "../pages/Dashboard/Dashboard";
 import Admins from "../pages/Admins/Admins";
 import Operators from "../pages/Operators/Operators";
@@ -6,10 +7,15 @@ import LeadDetailPage from "../pages/Leads/LeadDetailPage";
 
 const superAdminRoutes = [
     {
-        name: "dashboard",
+        name: "home",
         path: "",
-        element: <Dashboard />,
+        element: <Navigate to="/superadmin/leads" replace />,
         end: true,
+    },
+    {
+        name: "dashboard",
+        path: "dashboard",
+        element: <Dashboard />,
     },
     {
         name: "admins",

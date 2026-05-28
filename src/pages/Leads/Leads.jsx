@@ -17,6 +17,7 @@ export default function Leads() {
             ? "admin"
             : "superadmin";
 
+    /** Super admin: 4 ustundan keyin gorizontal scroll; admin/operator: 5 tadan keyin */
     const maxVisibleColumns = isSuperAdmin(role) ? 4 : 5;
     const canDeleteLid = isSuperAdmin(role);
 

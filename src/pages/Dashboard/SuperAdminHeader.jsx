@@ -22,7 +22,7 @@ import { useAuthStore } from "../../store/authStore";
 import LogoutModal from "../../components/common/LogoutModal";
 
 const NAV_LINKS = [
-  { label: "Bosh sahifa", to: "/superadmin", icon: <Home size={16} /> },
+  { label: "Bosh sahifa", to: "/superadmin/dashboard", icon: <Home size={16} /> },
   {
     label: "Adminlar",
     to: "/superadmin/admins",
@@ -45,10 +45,18 @@ export default function SuperAdminHeader() {
   const hoverBg = useColorModeValue("gray.100", "whiteAlpha.100");
   const { pathname } = useLocation();
 
-  const showBack = pathname !== "/superadmin";
-  const currentPage = NAV_LINKS.find((l) =>
-    l.to === "/superadmin" ? pathname === "/superadmin" : pathname.startsWith(l.to),
-  );
+  const onLeadsList = pathname === "/superadmin/leads";
+  const onLeadsDetail = /^\/superadmin\/leads\/[^/]+$/.test(pathname);
+  const showBack = !onLeadsList;
+  const currentPage = NAV_LINKS.find((l) => {
+    if (onLeadsList || onLeadsDetail) {
+      return l.to === "/superadmin/leads";
+    }
+    if (l.to === "/superadmin/dashboard") {
+      return pathname === "/superadmin/dashboard";
+    }
+    return pathname.startsWith(l.to);
+  });
 
   return (
     <Flex
@@ -86,8 +94,8 @@ export default function SuperAdminHeader() {
       >
         {NAV_LINKS.map((link) => {
           const isActive =
-            link.to === "/superadmin"
-              ? pathname === "/superadmin"
+            link.to === "/superadmin/dashboard"
+              ? pathname === "/superadmin/dashboard"
               : pathname.startsWith(link.to);
           return (
             <Button

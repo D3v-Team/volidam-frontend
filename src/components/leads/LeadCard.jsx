@@ -4,25 +4,33 @@ import {
     Text,
     Icon,
     IconButton,
+    Avatar,
     useColorModeValue,
 } from "@chakra-ui/react";
-import { Phone, Trash2 } from "lucide-react";
+import { Phone, Trash2, Clock } from "lucide-react";
 import { LEAD_CARD_MIN_H_COMPACT, volidamDangerIconButton } from "./leadStyles";
+import { formatDateTime } from "../../utils/tools/formatDateTime";
 
 export default function LeadCard({ lid, onOpen, onDelete, isDragging }) {
     const borderColor = useColorModeValue("rgba(244, 143, 177, 0.4)", "whiteAlpha.200");
     const hoverBorder = useColorModeValue("brand.500", "brand.300");
     const cardBg = useColorModeValue("rgba(255, 255, 255, 0.95)", "whiteAlpha.50");
     const phoneColor = useColorModeValue("brand.600", "brand.300");
+    const metaColor = useColorModeValue("textSecondary", "gray.400");
 
     const title = lid.fio?.trim() || "—";
     const phone = lid.telefon_raqam?.trim() || "";
-    const hasFooter = !!phone;
+    const createdLabel = formatDateTime(lid.createdAt, "uz-UZ", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+    });
+    const hasMeta = !!phone || (createdLabel && createdLabel !== "-");
 
     return (
         <Box
             p={3.5}
-            minH={hasFooter ? undefined : LEAD_CARD_MIN_H_COMPACT}
+            minH={hasMeta ? undefined : LEAD_CARD_MIN_H_COMPACT}
             w="100%"
             minW={0}
             overflow="hidden"
@@ -57,61 +65,91 @@ export default function LeadCard({ lid, onOpen, onDelete, isDragging }) {
             }}
             onClick={() => onOpen(lid)}
         >
-            <Flex align="flex-start" gap={2} mb={hasFooter ? 2.5 : 0} minW={0}>
-                <Text
-                    fontWeight="800"
-                    fontSize="sm"
-                    lineHeight="short"
-                    noOfLines={3}
-                    letterSpacing="0.03em"
-                    flex={1}
-                    minW={0}
-                    pr={1}
-                    color="text"
-                >
-                    {title}
-                </Text>
+            <Flex align="flex-start" gap={3} minW={0}>
+                <Avatar
+                    name={title !== "—" ? title : "Lid"}
+                    size="lg"
+                    bg="brand.500"
+                    color="white"
+                    flexShrink={0}
+                />
 
-                {onDelete ? (
-                    <IconButton
-                        {...volidamDangerIconButton}
-                        aria-label="Lidni o'chirish"
-                        icon={<Trash2 size={15} />}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onDelete(lid);
-                        }}
-                        onMouseDown={(e) => e.stopPropagation()}
-                    />
-                ) : null}
+                <Box flex="1" minW={0}>
+                    <Flex align="flex-start" justify="space-between" gap={2}>
+                        <Text
+                            fontWeight="700"
+                            fontSize="md"
+                            color="text"
+                            noOfLines={2}
+                            letterSpacing="0.02em"
+                            flex="1"
+                            minW={0}
+                        >
+                            {title}
+                        </Text>
+
+                        {onDelete ? (
+                            <IconButton
+                                {...volidamDangerIconButton}
+                                size="xs"
+                                aria-label="Lidni o'chirish"
+                                icon={<Trash2 size={14} />}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDelete(lid);
+                                }}
+                                onMouseDown={(e) => e.stopPropagation()}
+                            />
+                        ) : null}
+                    </Flex>
+
+                    {hasMeta ? (
+                        <Flex
+                            direction="column"
+                            align="flex-start"
+                            gap={1.5}
+                            mt={2.5}
+                        >
+                            {createdLabel && createdLabel !== "-" ? (
+                                <Flex align="center" gap={1.5} minW={0} maxW="100%">
+                                    <Icon
+                                        as={Clock}
+                                        boxSize={3.5}
+                                        color={metaColor}
+                                        flexShrink={0}
+                                    />
+                                    <Text
+                                        fontSize="xs"
+                                        fontWeight="600"
+                                        color={metaColor}
+                                        noOfLines={1}
+                                    >
+                                        {createdLabel}
+                                    </Text>
+                                </Flex>
+                            ) : null}
+                            {phone ? (
+                                <Flex align="center" gap={1.5} minW={0} maxW="100%">
+                                    <Icon
+                                        as={Phone}
+                                        boxSize={3.5}
+                                        color={phoneColor}
+                                        flexShrink={0}
+                                    />
+                                    <Text
+                                        fontSize="xs"
+                                        fontWeight="700"
+                                        color="text"
+                                        noOfLines={1}
+                                    >
+                                        {phone}
+                                    </Text>
+                                </Flex>
+                            ) : null}
+                        </Flex>
+                    ) : null}
+                </Box>
             </Flex>
-
-            {hasFooter ? (
-                <Flex
-                    flexWrap="wrap-reverse"
-                    justify="space-between"
-                    align="center"
-                    columnGap={2}
-                    rowGap={1.5}
-                    w="100%"
-                    minW={0}
-                    mt="auto"
-                >
-                    <LeadCardPhone phone={phone} phoneColor={phoneColor} />
-                </Flex>
-            ) : null}
         </Box>
-    );
-}
-
-function LeadCardPhone({ phone, phoneColor }) {
-    if (!phone) return null;
-    return (
-        <Flex align="center" gap={1.5} flexShrink={0} minW={0} maxW="100%">
-            <Icon as={Phone} boxSize={3.5} color={phoneColor} flexShrink={0} />
-            <Text fontSize="xs" fontWeight="700" color="text" noOfLines={1}>
-                {phone}
-            </Text>
-        </Flex>
     );
 }

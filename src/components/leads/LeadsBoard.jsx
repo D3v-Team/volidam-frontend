@@ -1,7 +1,6 @@
 import {
     Box,
     Flex,
-    Heading,
     Text,
     Button,
     HStack,
@@ -194,13 +193,7 @@ export default function LeadsBoard({
             mb={4}
             flexWrap="wrap"
         >
-            {!panelLayout ? (
-                <Heading size="lg" color="text">
-                    {title}
-                </Heading>
-            ) : (
-                <Box flex="1" minW={0} />
-            )}
+            <Box flex="1" minW={0} />
 
             <Flex
                 direction="column"
@@ -263,7 +256,7 @@ export default function LeadsBoard({
                     Statuslar topilmadi
                 </Text>
             ) : (
-                <Box w="100%" maxW="100%" minW={0} overflow="hidden">
+                <Box w="100%" maxW="100%" minW={0} minH={0} overflow="hidden">
                 <LeadsKanbanBoard
                     boardScrollRef={scroll.boardScrollRef}
                     statuses={statuses}
