@@ -80,26 +80,7 @@ export default function LeadCard({ lid, onOpen, onDelete, isDragging }) {
       onClick={() => onOpen(lid)}
     >
       <Flex align="stretch" gap={4} minW={0}>
-        <Box
-          flexShrink={0}
-          w="56px"
-          h="56px"
-          borderRadius="full"
-          bg="brand.500"
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
-          <Text
-            color="white"
-            fontWeight="700"
-            fontSize="xl"
-            lineHeight="1"
-            userSelect="none"
-          >
-            {/* {getInitials(title)} */}
-          </Text>
-        </Box>
+       
 
         <Box flex="1" minW={0}>
           <Flex align="center" gap={1.5} minW={0}>
