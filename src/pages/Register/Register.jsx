@@ -277,42 +277,6 @@ export default function Register() {
           position="relative"
           zIndex={1}
         >
-         
-<Flex justify="center" mb={3} position="relative" zIndex={1}>
-    <Box
-        w="100px" h="100px"
-        borderRadius="full"
-        bg="#CC0000"
-        border="3px solid white"
-        boxShadow="0 4px 16px rgba(180,0,0,0.30)"
-        display="flex"
-        flexDirection="column"
-        alignItems="center"
-        justifyContent="center"
-    >
-        <Text
-            fontFamily="'DM Sans', sans-serif"
-            fontWeight="700"
-            fontSize="14px"
-            color="white"
-            letterSpacing="0.12em"
-            lineHeight="1"
-        >
-            VOLIDAM
-        </Text>
-        <Text
-            fontFamily="'Cormorant Garamond', serif"
-            fontStyle="italic"
-            fontSize="10px"
-            color="rgba(255,255,255,0.88)"
-            letterSpacing="0.04em"
-            textAlign="center"
-            lineHeight="1.3"
-        >
-            o'quv markazi
-        </Text>
-    </Box>
-</Flex>
 
           <Heading
             className="reg-title"

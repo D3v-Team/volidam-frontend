@@ -9,7 +9,7 @@ const superAdminRoutes = [
     {
         name: "home",
         path: "",
-        element: <Navigate to="/superadmin/leads" replace />,
+        element: <Navigate to="/superadmin/dashboard" replace />,
         end: true,
     },
     {

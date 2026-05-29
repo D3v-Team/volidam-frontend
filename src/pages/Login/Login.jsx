@@ -1,18 +1,18 @@
 import {
-    Box,
-    Flex,
-    Heading,
-    Text,
-    Input,
-    Button,
-    FormControl,
-    FormLabel,
-    FormErrorMessage,
-    Link,
-    InputGroup,
-    InputLeftElement,
-    InputRightElement,
-    VStack,
+  Box,
+  Flex,
+  Heading,
+  Text,
+  Input,
+  Button,
+  FormControl,
+  FormLabel,
+  FormErrorMessage,
+  Link,
+  InputGroup,
+  InputLeftElement,
+  InputRightElement,
+  VStack,
 } from "@chakra-ui/react";
 import { useRef, useState } from "react";
 import { Auth } from "../../Services/api/Auth";
@@ -22,70 +22,71 @@ import { useNavigate } from "react-router";
 import { isAdmin, isOperator, isSuperAdmin } from "../../utils/roles";
 
 export default function Login() {
-    const { login } = useAuth();
-    const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-    const passInput = useRef("");
-    const logInput = useRef("");
-    const [errors, setErrors] = useState({ login: "", password: "" });
+  const passInput = useRef("");
+  const logInput = useRef("");
+  const [errors, setErrors] = useState({ login: "", password: "" });
 
-    const clearError = (field) => {
-        setErrors((prev) => ({ ...prev, [field]: "" }));
-    };
+  const clearError = (field) => {
+    setErrors((prev) => ({ ...prev, [field]: "" }));
+  };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const loginText = logInput.current.value.trim();
-        const password = passInput.current.value.trim();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const loginText = logInput.current.value.trim();
+    const password = passInput.current.value.trim();
 
-        let newErrors = {};
-        if (!loginText) newErrors.login = "Login kiritilmadi";
-        if (!password) newErrors.password = "Parol kiritilmadi";
-        else if (password.length < 6) newErrors.password = "Parol kamida 6 belgidan iborat bo'lishi kerak";
+    let newErrors = {};
+    if (!loginText) newErrors.login = "Login kiritilmadi";
+    if (!password) newErrors.password = "Parol kiritilmadi";
+    else if (password.length < 6)
+      newErrors.password = "Parol kamida 6 belgidan iborat bo'lishi kerak";
 
-        setErrors(newErrors);
-        if (Object.keys(newErrors).length > 0) return;
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
 
-        try {
-            setLoading(true);
-            const res = await Auth.Login({
-                username: logInput.current.value,
-                password: passInput.current.value,
-            });
+    try {
+      setLoading(true);
+      const res = await Auth.Login({
+        username: logInput.current.value,
+        password: passInput.current.value,
+      });
 
-            if (res.status === 200 || res.status === 201) {
-                const data = res.data;
-                login({
-                    token: data.tokens.access_token,
-                    refreshToken: data.tokens.refresh_token,
-                    user: data.user,
-                });
+      if (res.status === 200 || res.status === 201) {
+        const data = res.data;
+        login({
+          token: data.tokens.access_token,
+          refreshToken: data.tokens.refresh_token,
+          user: data.user,
+        });
 
-                if (isSuperAdmin(data.user.role)) {
-                    navigate("/superadmin/leads");
-                    toastService.success("Xush kelibsiz, Super Admin!");
-                } else if (isAdmin(data.user.role)) {
-                    navigate("/admin/leads");
-                    toastService.success("Muvaffaqiyatli kirdingiz, Admin!");
-                } else if (isOperator(data.user.role)) {
-                    navigate("/operator/leads");
-                    toastService.success("Muvaffaqiyatli kirdingiz, Operator!");
-                } else {
-                    toastService.error("Role mos kelmadi");
-                }
-            }
-        } catch (err) {
-            toastService.error(err?.response?.data?.message || "Tizim xatosi");
-        } finally {
-            setLoading(false);
+        if (isSuperAdmin(data.user.role)) {
+          navigate("/superadmin/dashboard");
+          toastService.success("Xush kelibsiz, Super Admin!");
+        } else if (isAdmin(data.user.role)) {
+          navigate("/admin/leads");
+          toastService.success("Muvaffaqiyatli kirdingiz, Admin!");
+        } else if (isOperator(data.user.role)) {
+          navigate("/operator/leads");
+          toastService.success("Muvaffaqiyatli kirdingiz, Operator!");
+        } else {
+          toastService.error("Role mos kelmadi");
         }
-    };
+      }
+    } catch (err) {
+      toastService.error(err?.response?.data?.message || "Tizim xatosi");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return (
-        <>
-            <style>{`
+  return (
+    <>
+      <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap');
 
               .login-bg {
@@ -306,158 +307,120 @@ export default function Login() {
                 }
             `}</style>
 
-            <Flex
-                className="login-bg"
-                minH="100vh"
-                align="center"
-                justify="center"
-                px={4}
-                position="relative"
-            >
-                <Box
-                    as="form"
-                    onSubmit={handleSubmit}
-                    className="login-card"
-                    w={{ base: "100%", sm: "440px" }}
-                    borderRadius="28px"
-                    p={{ base: "2rem 1.6rem", sm: "3rem 2.8rem 2.5rem" }}
-                    position="relative"
-                    zIndex={1}
-                >
-                  
-<Flex justify="center" mb={3} position="relative" zIndex={1}>
-    <Box
-        w="100px" h="100px"
-        borderRadius="full"
-        bg="#CC0000"
-        border="3px solid white"
-        boxShadow="0 4px 16px rgba(180,0,0,0.30)"
-        display="flex"
-        flexDirection="column"
-        alignItems="center"
-        justifyContent="center"
-    >
-        <Text
-            fontFamily="'DM Sans', sans-serif"
-            fontWeight="700"
-            fontSize="14px"
-            color="white"
-            letterSpacing="0.12em"
-            lineHeight="1"
+      <Flex
+        className="login-bg"
+        minH="100vh"
+        align="center"
+        justify="center"
+        px={4}
+        position="relative"
+      >
+        <Box
+          as="form"
+          onSubmit={handleSubmit}
+          className="login-card"
+          w={{ base: "100%", sm: "440px" }}
+          borderRadius="28px"
+          p={{ base: "2rem 1.6rem", sm: "3rem 2.8rem 2.5rem" }}
+          position="relative"
+          zIndex={1}
         >
-            VOLIDAM
-        </Text>
-        <Text
-            fontFamily="'Cormorant Garamond', serif"
-            fontStyle="italic"
-            fontSize="10px"
-            color="rgba(255,255,255,0.88)"
-            letterSpacing="0.04em"
+          <Heading
+            className="login-title"
             textAlign="center"
-            lineHeight="1.3"
-        >
-            o'quv markazi
-        </Text>
-    </Box>
-</Flex>
+            fontSize="2.1rem"
+            fontWeight={500}
+            color="#880e4f"
+            mb={2}
+            position="relative"
+            zIndex={1}
+          >
+            Kirish
+          </Heading>
 
+          <Box
+            className="login-divider"
+            my={3}
+            position="relative"
+            zIndex={1}
+          />
 
-                    <Heading
-                        className="login-title"
-                        textAlign="center"
-                        fontSize="2.1rem"
-                        fontWeight={500}
-                        color="#880e4f"
-                        mb={2}
-                        position="relative"
-                        zIndex={1}
-                    >
-                        Kirish
-                    </Heading>
+          <Text
+            textAlign="center"
+            fontSize="0.99rem"
+            fontFamily="'DM Sans', sans-serif"
+            fontWeight={300}
+            color="#c2185b"
+            opacity={0.72}
+            mb={7}
+            mt={3}
+            letterSpacing="0.02em"
+            position="relative"
+            zIndex={1}
+          >
+            Tizimga kirish uchun ma'lumotlarni kiriting
+          </Text>
 
-                    <Box className="login-divider" my={3} position="relative" zIndex={1} />
+          <VStack spacing={5} position="relative" zIndex={1}>
+            <FormControl isInvalid={!!errors.login}>
+              <FormLabel className="login-label">Login</FormLabel>
+              <InputGroup>
+                <Input
+                  ref={logInput}
+                  className="login-input"
+                  placeholder="Loginni kiriting"
+                  onChange={() => clearError("login")}
+                />
+              </InputGroup>
+              <FormErrorMessage className="login-error">
+                ✦ {errors.login}
+              </FormErrorMessage>
+            </FormControl>
 
-                    <Text
-                        textAlign="center"
-                        fontSize="0.99rem"
-                        fontFamily="'DM Sans', sans-serif"
-                        fontWeight={300}
-                        color="#c2185b"
-                        opacity={0.72}
-                        mb={7}
-                        mt={3}
-                        letterSpacing="0.02em"
-                        position="relative"
-                        zIndex={1}
-                    >
-                        Tizimga kirish uchun ma'lumotlarni kiriting
-                    </Text>
+            <FormControl isInvalid={!!errors.password}>
+              <FormLabel className="login-label">Parol</FormLabel>
+              <InputGroup>
+                <Input
+                  ref={passInput}
+                  className="login-input"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Parolni kiriting"
+                  onChange={() => clearError("password")}
+                />
+                <InputRightElement h="50px">
+                  <button
+                    type="button"
+                    className="eye-btn"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={
+                      showPassword ? "Parolni yashirish" : "Parolni ko'rsatish"
+                    }
+                  ></button>
+                </InputRightElement>
+              </InputGroup>
+              <FormErrorMessage className="login-error">
+                ✦ {errors.password}
+              </FormErrorMessage>
+            </FormControl>
+          </VStack>
 
-                    <VStack spacing={5} position="relative" zIndex={1}>
-                        <FormControl isInvalid={!!errors.login}>
-                            <FormLabel className="login-label">Login</FormLabel>
-                            <InputGroup>
-                              
-                                <Input
-                                    ref={logInput}
-                                    className="login-input"
-                                    placeholder="Loginni kiriting"
-                                    onChange={() => clearError("login")}
-                                />
-                            </InputGroup>
-                            <FormErrorMessage className="login-error">
-                                ✦ {errors.login}
-                            </FormErrorMessage>
-                        </FormControl>
+       
 
-                        <FormControl isInvalid={!!errors.password}>
-                            <FormLabel className="login-label">Parol</FormLabel>
-                            <InputGroup>
-                               
-                                <Input
-                                    ref={passInput}
-                                    className="login-input"
-                                    type={showPassword ? "text" : "password"}
-                                    placeholder="Parolni kiriting"
-                                    onChange={() => clearError("password")}
-                                />
-                                <InputRightElement h="50px">
-                                    <button
-                                        type="button"
-                                        className="eye-btn"
-                                        onClick={() => setShowPassword((v) => !v)}
-                                        aria-label={showPassword ? "Parolni yashirish" : "Parolni ko'rsatish"}
-                                    >
-                                    </button>
-                                </InputRightElement>
-                            </InputGroup>
-                            <FormErrorMessage className="login-error">
-                                ✦ {errors.password}
-                            </FormErrorMessage>
-                        </FormControl>
-                    </VStack>
+          <Button
+            type="submit"
+            className="login-btn"
+            w="100%"
+            mt={5}
+            mb={4}
+            isLoading={loading}
+            loadingText="Yuklanmoqda..."
+            position="relative"
+            zIndex={1}
+          >
+            ✦ Kirish ✦
+          </Button>
 
-                    <Flex justify="flex-end" mt={2} mb={1} position="relative" zIndex={1}>
-                        <Link className="login-forgot-link" href="#">
-                            Parolni unutdingizmi?
-                        </Link>
-                    </Flex>
-
-                    <Button
-                        type="submit"
-                        className="login-btn"
-                        w="100%"
-                        mt={5}
-                        mb={4}
-                        isLoading={loading}
-                        loadingText="Yuklanmoqda..."
-                        position="relative"
-                        zIndex={1}
-                    >
-                        ✦ Kirish ✦
-                    </Button>
-
-                    {/* <Text
+          {/* <Text
                         textAlign="center"
                         fontSize="0.99rem"
                         fontFamily="'DM Sans', sans-serif"
@@ -474,8 +437,8 @@ export default function Login() {
                             Ro'yxatdan o'tish
                         </Link>
                     </Text> */}
-                </Box>
-            </Flex>
-        </>
-    );
+        </Box>
+      </Flex>
+    </>
+  );
 }
