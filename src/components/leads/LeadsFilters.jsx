@@ -18,6 +18,7 @@ import {
   useDisclosure,
   Toast,
 } from "@chakra-ui/react";
+import { useAuthStore } from "../../store/authStore";
 import { Search } from "lucide-react";
 import { filterFieldProps, searchFieldProps } from "./leadStyles";
 import { useState } from "react";
@@ -52,7 +53,7 @@ export default function LeadsFilters({
   const [assignUsers, setAssignUsers] = useState([]);
   const [assignUsersLoading, setAssignUsersLoading] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
-
+  const user = useAuthStore((s) => s.user);
   const handleRoleChange = async (role) => {
     console.log("ROLE =>", role);
     setSelectedRole(role);
@@ -74,7 +75,6 @@ export default function LeadsFilters({
     }
   };
 
-
   const handleAssign = async () => {
   if (!selectedUserId) return;
 
@@ -90,8 +90,6 @@ export default function LeadsFilters({
   setSelectedRole("");
   setAssignUsers([]);
 };
-
-
 
   return (
     <>
@@ -133,7 +131,7 @@ export default function LeadsFilters({
            isDisabled={!role || usersLoading}
           >
             <option value="">
-              {!role
+              {!selectedRole
                 ? "Avval rol tanlang"
                 : usersLoading
                   ? "Yuklanmoqda..."
@@ -167,34 +165,37 @@ export default function LeadsFilters({
             />
           </InputGroup>
         </FormControl>
-        {!assignMode ? (
-          <Button
-            size="md"
-            colorScheme="pink"
-            onClick={() => setAssignMode(true)}
-          >
-            Hodim Biriktirish
-          </Button>
-        ) : (
-          <>
-        <Button
-  colorScheme="pink"
-  onClick={assignModal.onOpen}
-  isDisabled={selectedLeadIds.length === 0}
->
-  Saqlash ({selectedLeadIds.length})
-</Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setAssignMode(false);
-                setSelectedLeadIds([]);
-              }}
-            >
-              Bekor qilish
-            </Button>
-          </>
-        )}
+ {user?.role === "super_admin" && (
+  !assignMode ? (
+    <Button
+      size="md"
+      colorScheme="pink"
+      onClick={() => setAssignMode(true)}
+    >
+      Hodim Biriktirish
+    </Button>
+  ) : (
+    <>
+      <Button
+        colorScheme="pink"
+        onClick={assignModal.onOpen}
+        isDisabled={selectedLeadIds.length === 0}
+      >
+        Saqlash ({selectedLeadIds.length})
+      </Button>
+
+      <Button
+        variant="outline"
+        onClick={() => {
+          setAssignMode(false);
+          setSelectedLeadIds([]);
+        }}
+      >
+        Bekor qilish
+      </Button>
+    </>
+  )
+)}
       </Flex>
 
       <Modal
@@ -229,15 +230,15 @@ export default function LeadsFilters({
               <Select
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
-                isDisabled={!role || usersLoading}
+                isDisabled={!selectedRole || usersLoading}
               >
                 <option value="">
                   {assignUsersLoading ? "Yuklanmoqda..." : "Hodim tanlang"}
                 </option>
 
-                {users.map((u) => (
+                {assignUsers.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.fio ?? u.name ?? u.username ?? u.id}
+                    {u.fio ?? u.name ?? u.full_name ?? u.id}
                   </option>
                 ))}
               </Select>

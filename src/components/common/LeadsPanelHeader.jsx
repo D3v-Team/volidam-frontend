@@ -53,10 +53,13 @@ export default function LeadsPanelHeader() {
                     borderColor={borderCol}
                     maxW="200px"
                 >
-                    <Avatar size="xs" name={user?.full_name} bg="blue.500" flexShrink={0} />
+                    <Avatar size="sm" name={user?.full_name} bg="blue.500" flexShrink={0} />
                     <Box lineHeight="short" minW={0}>
                         <Text fontSize="sm" fontWeight="600" color="text" noOfLines={1}>
                             {user?.full_name}
+                        </Text>
+                        <Text fontSize="xs" color="text" noOfLines={1}>
+                            {user?.role}
                         </Text>
                     </Box>
                 </HStack>
