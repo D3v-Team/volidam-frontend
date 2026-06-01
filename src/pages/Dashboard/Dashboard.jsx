@@ -178,9 +178,32 @@ function PeriodToggle({ active, onChange, theme }) {
   );
 }
 
-function OrderStatusCard({ data, total, loading, theme }) {
-  const activeData = (data || []).filter((s) => s.count > 0);
-  const emptySlice = [{ count: 1, color: theme.border }];
+function OrderStatusCard({ theme }) {
+  const today = new Date();
+  const [selectedDate, setSelectedDate] = useState(fmt(today));
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const isToday = selectedDate === fmt(today);
+
+  const fetchData = useCallback(async (dateStr) => {
+    setLoading(true);
+    try {
+      const res = await apiStatistics.getByDate(dateStr);
+      setData(res?.data);
+    } catch (_) {
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData(selectedDate);
+  }, [selectedDate, fetchData]);
+
+  const statusList = data?.by_status || [];
+  const total = data?.total ?? 0;
 
   return (
     <Box
@@ -195,19 +218,49 @@ function OrderStatusCard({ data, total, loading, theme }) {
     >
       <Flex justify="space-between" align="center" mb="18px">
         <Text fontSize="14px" fontWeight="700" color={theme.text}>
-        Holati bo'yicha (bugun)
+          Holati bo'yicha ({isToday ? "bugun" : selectedDate})
         </Text>
-        <Text fontSize="12px" fontWeight="600" color={theme.textMuted}>
-          {fmt(new Date())}
-        </Text>
+        <Input
+          type="date"
+          value={selectedDate}
+          max={fmt(today)}
+          onChange={(e) => {
+            if (e.target.value) setSelectedDate(e.target.value);
+          }}
+          size="sm"
+          w="160px"
+          borderRadius="6px"
+          fontSize="11px"
+          fontWeight="600"
+          color={theme.textMuted}
+          bg={theme.selectBg}
+          borderColor={theme.border}
+          _focus={{ borderColor: theme.accent }}
+          cursor="pointer"
+          sx={{
+            colorScheme: useColorModeValue("light", "dark"),
+            "&::-webkit-calendar-picker-indicator": {
+              display: "block",
+              visibility: "visible",
+              opacity: "1 !important",
+              width: "14px",
+              height: "14px",
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23B08090' stroke-width='2'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E")`,
+              backgroundRepeat: "no-repeat",
+              backgroundSize: "contain",
+              cursor: "pointer",
+            },
+          }}
+        />
       </Flex>
+
       {loading ? (
-        <Flex flex={1} align="center" justify="center">
+        <Flex flex={1} align="center" justify="center" py="20px">
           <Spinner color={theme.accent} />
         </Flex>
-      ) : data?.length ? (
+      ) : statusList.length ? (
         <VStack spacing={0} align="stretch">
-          {data.map((s, i) => {
+          {statusList.map((s, i) => {
             const pct = total ? Math.round((s.count / total) * 100) : 0;
             return (
               <Box
@@ -257,7 +310,7 @@ function OrderStatusCard({ data, total, loading, theme }) {
           })}
         </VStack>
       ) : (
-        <Flex flex={1} align="center" justify="center">
+        <Flex flex={1} align="center" justify="center" py="20px">
           <Text fontSize="13px" color={theme.textMuted}>
             Ma'lumot yo'q
           </Text>
@@ -282,7 +335,11 @@ function RangeStatusCard({ data, total, loading, theme }) {
             <ResponsiveContainer width={240} height={240}>
               <PieChart>
                 <Pie
-                  data={activeData.length ? activeData : [{ count: 1, color: theme.border }]}
+                  data={
+                    activeData.length
+                      ? activeData
+                      : [{ count: 1, color: theme.border }]
+                  }
                   dataKey="count"
                   cx="50%"
                   cy="50%"
@@ -293,11 +350,12 @@ function RangeStatusCard({ data, total, loading, theme }) {
                   endAngle={-270}
                   labelLine={false}
                 >
-                  {(activeData.length ? activeData : [{ count: 1, color: theme.border }]).map(
-                    (entry, i) => (
-                      <Cell key={i} fill={entry.color} stroke="none" />
-                    )
-                  )}
+                  {(activeData.length
+                    ? activeData
+                    : [{ count: 1, color: theme.border }]
+                  ).map((entry, i) => (
+                    <Cell key={i} fill={entry.color} stroke="none" />
+                  ))}
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
@@ -310,7 +368,12 @@ function RangeStatusCard({ data, total, loading, theme }) {
               align="center"
               pointerEvents="none"
             >
-              <Text fontSize="36px" fontWeight="800" color={theme.text} lineHeight="1">
+              <Text
+                fontSize="36px"
+                fontWeight="800"
+                color={theme.text}
+                lineHeight="1"
+              >
                 {total ?? 0}
               </Text>
               <Text
@@ -356,7 +419,13 @@ function RangeStatusCard({ data, total, loading, theme }) {
                     <Text fontSize="18px" fontWeight="800" color={theme.text}>
                       {s.count}
                     </Text>
-                    <Text fontSize="13px" fontWeight="500" color={theme.textMuted} minW="36px" textAlign="right">
+                    <Text
+                      fontSize="13px"
+                      fontWeight="500"
+                      color={theme.textMuted}
+                      minW="36px"
+                      textAlign="right"
+                    >
                       {pct}%
                     </Text>
                   </Flex>
@@ -422,7 +491,6 @@ export default function Dashboard() {
   const [year, setYear] = useState(currentYear());
   const [newLeads, setNewLeads] = useState(null);
   const [byRange, setByRange] = useState(null);
-  const [byDate, setByDate] = useState(null);
   const [monthly, setMonthly] = useState([]);
 
   const [loadingCards, setLoadingCards] = useState(true);
@@ -432,12 +500,7 @@ export default function Dashboard() {
   const fetchCards = useCallback(async () => {
     setLoadingCards(true);
     try {
-      const todayStr = fmt(new Date());
-      const [dateRes, leadsRes] = await Promise.all([
-        apiStatistics.getByDate(todayStr),
-        apiStatistics.getNewLeads(),
-      ]);
-      setByDate(dateRes?.data);
+      const leadsRes = await apiStatistics.getNewLeads();
       setNewLeads(leadsRes?.data);
     } catch (_) {}
     setLoadingCards(false);
@@ -583,12 +646,7 @@ export default function Dashboard() {
           </Box>
         </Flex>
 
-        <OrderStatusCard
-          data={byDate?.by_status}
-          total={byDate?.total}
-          loading={loadingCards}
-          theme={theme}
-        />
+        <OrderStatusCard theme={theme} />
       </Grid>
 
       <Flex
@@ -609,6 +667,7 @@ export default function Dashboard() {
               const { start, end } = getRange(p);
               setManualStart(start);
               setManualEnd(end);
+              fetchRange(start, end);
             }}
             theme={theme}
           />
@@ -647,14 +706,6 @@ export default function Dashboard() {
             _focus={{ borderColor: theme.accent }}
             sx={{ colorScheme: "dark" }}
           />
-          <HStack spacing={2}>
-            <Text fontSize="12px" color={theme.textMuted} fontWeight="500">
-              Jami:
-            </Text>
-            <Text fontSize="16px" fontWeight="800" color={theme.accent}>
-              {byRange?.total ?? 0}
-            </Text>
-          </HStack>
         </Flex>
       </Flex>
 
