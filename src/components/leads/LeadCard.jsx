@@ -153,3 +153,4 @@ export default function LeadCard({ lid, onOpen, onDelete, isDragging }) {
     </Box>
   );
 }
+
