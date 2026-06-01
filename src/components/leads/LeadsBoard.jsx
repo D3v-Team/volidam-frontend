@@ -30,6 +30,8 @@ import ConfirmDelModal from "../common/ConfirmDelModal";
 import { toastService } from "../../utils/toast";
 import { getApiErrorMessage } from "../../utils/lidStatus";
 import { volidamOutlineButton, volidamPrimaryButton } from "./leadStyles";
+import { apiUsers } from "../../Services/api/Users";
+import { apiLids } from "../../Services/api/Lids";
 
 export default function LeadsBoard({
   canManageStatuses = false,
@@ -45,9 +47,58 @@ export default function LeadsBoard({
   const { pathname } = useLocation();
   const leadsBasePath = getLeadsBasePath(pathname);
 
-  const [statusFilter, setStatusFilter] = useState("");
-  const [search, setSearch] = useState("");
+  const SESSION_KEY = `leadsFilters_${scrollRoleScope}`;
+
+  const getSession = () => {
+    try {
+      return JSON.parse(sessionStorage.getItem(SESSION_KEY)) || {};
+    } catch {
+      return {};
+    }
+  };
+
+  const [statusFilter, setStatusFilter] = useState(
+    () => getSession().statusFilter || "",
+  );
+  const [search, setSearch] = useState(() => getSession().search || "");
+  const [filterRole, setFilterRole] = useState(
+    () => getSession().filterRole || "",
+  );
+  const [filterAssignedId, setFilterAssignedId] = useState(
+    () => getSession().filterAssignedId || "",
+  );
+  const [filterUsers, setFilterUsers] = useState([]);
+  const [filterUsersLoading, setFilterUsersLoading] = useState(false);
+
   const debouncedSearch = useDebounce(search, 350);
+  const debouncedAssignedId = useDebounce(filterAssignedId, 350);
+
+  const [assignMode, setAssignMode] = useState(false);
+  const [selectedLeadIds, setSelectedLeadIds] = useState([]);
+
+  useEffect(() => {
+    if (!filterRole) return;
+    setFilterUsersLoading(true);
+    apiUsers
+      .getUsers(filterRole)
+      .then((res) => setFilterUsers(res.data?.data ?? res.data ?? []))
+      .catch(() => setFilterUsers([]))
+      .finally(() => setFilterUsersLoading(false));
+  }, []);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        SESSION_KEY,
+        JSON.stringify({
+          statusFilter,
+          search,
+          filterRole,
+          filterAssignedId,
+        }),
+      );
+    } catch {}
+  }, [statusFilter, search, filterRole, filterAssignedId]);
 
   const {
     statuses,
@@ -59,6 +110,7 @@ export default function LeadsBoard({
     loadingMore,
     hasMore,
     loadMore,
+    refreshBoard,
     moveLid,
     createLid,
     deleteLid,
@@ -68,7 +120,25 @@ export default function LeadsBoard({
   } = useLeadsBoard({
     statusFilter,
     search: debouncedSearch,
+    assignedId: debouncedAssignedId,
+    role: filterRole,
   });
+
+  const handleFilterRoleChange = async (role) => {
+    setFilterRole(role);
+    setFilterAssignedId("");
+    setFilterUsers([]);
+    if (!role) return;
+    setFilterUsersLoading(true);
+    try {
+      const res = await apiUsers.getUsers(role);
+      setFilterUsers(res.data?.data ?? res.data ?? []);
+    } catch {
+      setFilterUsers([]);
+    } finally {
+      setFilterUsersLoading(false);
+    }
+  };
 
   const scroll = useLeadsBoardScroll({
     roleScope: scrollRoleScope,
@@ -190,6 +260,12 @@ export default function LeadsBoard({
     }
   };
 
+  const handleAssignLeads = async (payload) => {
+  await apiLids.assign(payload);
+
+  await refreshBoard();
+};
+
   const toolbar = (
     <Flex
       justify="space-between"
@@ -251,8 +327,19 @@ export default function LeadsBoard({
         statuses={allStatuses}
         statusId={statusFilter}
         onStatusIdChange={setStatusFilter}
+        role={filterRole}
+        onRoleChange={handleFilterRoleChange}
+        assignedId={filterAssignedId}
+        onAssignedIdChange={setFilterAssignedId}
+        users={filterUsers}
+        usersLoading={filterUsersLoading}
         search={search}
         onSearchChange={setSearch}
+        assignMode={assignMode}
+        setAssignMode={setAssignMode}
+        selectedLeadIds={selectedLeadIds}
+        setSelectedLeadIds={setSelectedLeadIds}
+         onAssignLeads={handleAssignLeads}
       />
       {loading && allStatuses.length === 0 ? (
         <Flex justify="center" py={20}>
@@ -287,6 +374,9 @@ export default function LeadsBoard({
             }}
             onDeleteStatus={requestDeleteStatus}
             onPersistScroll={scroll.schedulePersistScroll}
+            assignMode={assignMode}
+            selectedLeadIds={selectedLeadIds}
+            setSelectedLeadIds={setSelectedLeadIds}
           />
         </Box>
       )}

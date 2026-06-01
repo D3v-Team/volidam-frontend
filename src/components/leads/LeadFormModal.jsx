@@ -25,6 +25,7 @@ import {
   Badge,
   Spinner,
   Checkbox,
+  Select,
 } from "@chakra-ui/react";
 import { useEffect, useState, useRef } from "react";
 import {
@@ -45,6 +46,7 @@ import {
 } from "lucide-react";
 import { apiLids } from "../../Services/api/Lids";
 import { apiLidStatuses } from "../../Services/api/LidStatuses";
+import { apiUsers } from "../../Services/api/Users";
 import { toastService } from "../../utils/toast";
 import { getApiErrorMessage } from "../../utils/lidStatus";
 
@@ -57,7 +59,7 @@ const empty = {
   fio: "",
   telefon_raqam: "",
   ota_ona_fio: "",
-  roles: [],
+  assigned_id: "",
 };
 
 export default function LeadFormModal({
@@ -83,6 +85,10 @@ export default function LeadFormModal({
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const fileInputRef = useRef(null);
   const dropdownRef = useRef(null);
+  const [selectedRole, setSelectedRole] = useState("");
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState("");
 
   const modalBg = "#2D1F35";
   const headerBg = "#331F3A";
@@ -143,34 +149,46 @@ export default function LeadFormModal({
     fetchStatuses();
   }, []);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    if (mode === "edit" && initialData) {
-      setForm({
-        fio: initialData.fio || "",
-        telefon_raqam: initialData.telefon_raqam || "",
-        ota_ona_fio: initialData.ota_ona_fio || "",
-        roles: initialData.roles || [],
-      });
-    } else {
-      setForm(empty);
+useEffect(() => {
+  if (!isOpen) return;
+  if (mode === "edit" && initialData) {
+    setForm({
+      fio: initialData.fio || "",
+      telefon_raqam: initialData.telefon_raqam || "",
+      ota_ona_fio: initialData.ota_ona_fio || "",
+      assigned_id: initialData.assigned_id || "",
+    });
+    if (initialData.assigned_id && initialData.assigned_role) {
+      setSelectedRole(initialData.assigned_role);
+      setSelectedUserId(initialData.assigned_id);
+      setUsersLoading(true);
+      apiUsers.getUsers(initialData.assigned_role)
+        .then((res) => setUsers(res.data?.data ?? res.data ?? []))
+        .catch(() => setUsers([]))
+        .finally(() => setUsersLoading(false));
     }
-    setErrors({});
-    setSelectedFile(null);
-    setDragActive(false);
-    setTabIndex(0);
-    setImportResult(null);
-    setShowResultModal(false);
-    setSelectedStatusId("");
-    setShowStatusDropdown(false);
-  }, [isOpen, mode, initialData]);
+  } else {
+    setForm(empty);
+  }
+  setErrors({});
+  setSelectedFile(null);
+  setDragActive(false);
+  setTabIndex(0);
+  setImportResult(null);
+  setShowResultModal(false);
+  setSelectedStatusId("");
+  setShowStatusDropdown(false);
+  setSelectedRole("");     
+  setSelectedUserId("");     
+  setUsers([]);              
+}, [isOpen, mode, initialData]);
 
   const validate = () => {
     const next = {};
     if (!form.fio.trim()) next.fio = "FIO kiritilmagan";
     if (!form.telefon_raqam.trim()) next.telefon_raqam = "Telefon kiritilmagan";
     if (!form.ota_ona_fio.trim()) next.ota_ona_fio = "Ota-ona FIO kiritilmagan";
-    if (!form.roles.length) next.roles = "Kamida bitta rol tanlang";
+    if (!form.assigned_id) next.assigned_id = "Hodim tanlanmagan"; 
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -182,18 +200,11 @@ export default function LeadFormModal({
       fio: form.fio.trim(),
       telefon_raqam: form.telefon_raqam.trim(),
       ota_ona_fio: form.ota_ona_fio.trim(),
-      roles: form.roles,
+      assigned_id: form.assigned_id,
     });
   };
 
-  const toggleRole = (role) => {
-    setForm((p) => ({
-      ...p,
-      roles: p.roles.includes(role)
-        ? p.roles.filter((r) => r !== role)
-        : [...p.roles, role],
-    }));
-  };
+
 
   const handleFileSelect = (file) => {
     if (!file) return;
@@ -271,7 +282,7 @@ export default function LeadFormModal({
     !form.fio.trim() ||
     !form.telefon_raqam.trim() ||
     !form.ota_ona_fio.trim() ||
-    !form.roles.length;
+    !form.assigned_id;
 
   const inputStyle = {
     bg: inputBg,
@@ -335,68 +346,108 @@ export default function LeadFormModal({
     transition: "all 0.2s ease",
   };
 
-  const RoleCheckboxes = () => (
-    <FormControl isInvalid={!!errors.roles}>
+  const RoleCheckboxes = () => {
+  const handleRoleChange = async (role) => {
+    setSelectedRole(role);
+    setSelectedUserId("");
+    setForm((p) => ({ ...p, assigned_id: "" }));
+    setUsers([]);
+    if (!role) return;
+    setUsersLoading(true);
+    try {
+      const res = await apiUsers.getUsers(role);
+      setUsers(res.data?.data ?? res.data ?? []);
+    } catch {
+      setUsers([]);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  return (
+    <FormControl isInvalid={!!errors.assigned_id}>
       <FormLabel {...labelStyle}>
         <HStack spacing={1.5}>
           <Icon as={Shield} boxSize={3.5} color={accentColor} />
-          <span>Ko'rinish huquqi (rollar)</span>
+          <span>Mas'ul shaxs</span>
         </HStack>
       </FormLabel>
       <VStack
+        w="100%"
         align="stretch"
-        spacing={2}
+        spacing={3}
         p={3}
-        bg={inputBg}
         border="1.5px solid"
-        borderColor={errors.roles ? "#C2185B" : inputBorder}
+        borderColor={errors.assigned_id ? "#C2185B" : inputBorder}
         borderRadius="12px"
       >
-        {ROLES.map((r) => (
-          <Flex
-            key={r.value}
-            align="center"
-            gap={3}
-            px={2}
-            py={2}
-            borderRadius="8px"
-            cursor="pointer"
-            _hover={{ bg: "rgba(194,24,91,0.08)" }}
-            transition="background 0.15s"
-            onClick={() => toggleRole(r.value)}
+        <Flex gap={4} w="100%">
+        
+          <Select
+            w="100%"
+            placeholder="Rol tanlang"
+            value={selectedRole}
+            onChange={(e) => handleRoleChange(e.target.value)}  // ✅ TO'G'RI
+            bg={inputBg}
+            borderColor={inputBorder}
+            color={selectedRole ? titleColor : placeholderColor}
+            _hover={{ borderColor: inputBorderHover }}
+            _focus={{
+              borderColor: inputBorderFocus,
+              boxShadow: "0 0 0 3px rgba(194,24,91,0.2)",
+            }}
+            transition="all 0.2s ease"
           >
-            <Checkbox
-              isChecked={form.roles.includes(r.value)}
-              onChange={() => toggleRole(r.value)}
-              colorScheme="pink"
-              size="md"
-              sx={{
-                "& .chakra-checkbox__control": {
-                  borderColor: form.roles.includes(r.value)
-                    ? accentColor
-                    : "rgba(180,80,120,0.4)",
-                  bg: form.roles.includes(r.value)
-                    ? accentColor
-                    : "transparent",
-                  borderRadius: "5px",
-                },
-              }}
-            />
-            <Text
-              fontSize="14px"
-              fontWeight={form.roles.includes(r.value) ? "600" : "400"}
-              color={form.roles.includes(r.value) ? tabActiveText : titleColor}
-            >
-              {r.label}
-            </Text>
-          </Flex>
-        ))}
+            {ROLES.map((role) => (
+              <option key={role.value} value={role.value}>
+                {role.label}
+              </option>
+            ))}
+          </Select>
+
+
+          <Select
+            w="100%"
+            placeholder={
+              !selectedRole
+                ? "Avval rol tanlang"
+                : usersLoading
+                  ? "Yuklanmoqda..."
+                  : users.length === 0
+                    ? "Hodim topilmadi"
+                    : "Hodimni tanlang"
+            }
+            value={selectedUserId}
+            onChange={(e) => {
+              const id = e.target.value;
+              setSelectedUserId(id);
+              setForm((p) => ({ ...p, assigned_id: id }));  // ✅ TO'G'RI
+            }}
+            isDisabled={!selectedRole || usersLoading || users.length === 0}
+            bg={inputBg}
+            borderColor={inputBorder}
+            color={selectedUserId ? titleColor : placeholderColor}
+            _hover={{ borderColor: inputBorderHover }}
+            _focus={{
+              borderColor: inputBorderFocus,
+              boxShadow: "0 0 0 3px rgba(194,24,91,0.2)",
+            }}
+            transition="all 0.2s ease"
+          >
+            {users.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.fio ?? user.name ?? user.full_name ?? user.id}
+              </option>
+            ))}
+          </Select>
+        </Flex>
       </VStack>
       <FormErrorMessage fontSize="12px" mt={1.5} color="pink.400">
-        {errors.roles}
+        {errors.assigned_id}
       </FormErrorMessage>
     </FormControl>
   );
+};
 
   const selectedStatus = statuses.find((s) => s.id === selectedStatusId);
 
