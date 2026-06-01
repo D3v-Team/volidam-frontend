@@ -86,9 +86,8 @@ export default function LeadValueFieldsSection({
                     <Box
                         key={col.id}
                         p={3}
-                        borderRadius="xl"
-                        borderWidth="1px"
-                        borderColor="border"
+                       
+                     
                         bg={fieldBg}
                     >
                         <FormControl isRequired={false}>

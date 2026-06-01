@@ -1,4 +1,4 @@
-import { Box, Text, useColorModeValue } from "@chakra-ui/react";
+import { Box, SimpleGrid, Text, useColorModeValue } from "@chakra-ui/react";
 
 export default function LeadDetailSection({
     title,
@@ -15,6 +15,7 @@ export default function LeadDetailSection({
         "0 4px 24px rgba(233, 30, 99, 0.08)",
         "sm"
     );
+    
 
     return (
         <Box
@@ -39,7 +40,7 @@ export default function LeadDetailSection({
                     gap={3}
                     flexWrap="wrap"
                 >
-                    <Box minW={0} flex={1}>
+                    <SimpleGrid minW={0} >
                         <Text
                             fontWeight="700"
                             fontSize={{ base: "md", md: "lg" }}
@@ -53,7 +54,7 @@ export default function LeadDetailSection({
                                 {subtitle}
                             </Text>
                         ) : null}
-                    </Box>
+                    </SimpleGrid>
                     {action}
                 </Box>
             ) : null}

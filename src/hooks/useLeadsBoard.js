@@ -9,7 +9,7 @@ import {
     parseStatusesResponse,
 } from "../utils/lidBoard";
 
-export function useLeadsBoard({ statusFilter = "", search = "" } = {}) {
+export function useLeadsBoard({ statusFilter = "", search = "" , assignedId = "",  role = "", } = {}) {
     const [statuses, setStatuses] = useState([]);
     const [lidsByStatus, setLidsByStatus] = useState({});
     const [counts, setCounts] = useState({});
@@ -35,6 +35,9 @@ export function useLeadsBoard({ statusFilter = "", search = "" } = {}) {
             try {
                 const lidsParams = { page: pageNumber };
                 if (statusFilter) lidsParams.status_id = statusFilter;
+                if (assignedId) lidsParams.assigned_id = assignedId; 
+                if (role) lidsParams.role = role;
+                console.log("LIDS PARAMS =>", lidsParams);
 
                 const [statusRes, lidsRes] =
                     pageNumber === 1
@@ -79,14 +82,14 @@ export function useLeadsBoard({ statusFilter = "", search = "" } = {}) {
                 }
             }
         },
-        [search, statusFilter]
+     [search, statusFilter, assignedId, role]  
     );
 
     useEffect(() => {
         skipPageEffectRef.current = true;
         setPage(1);
         loadPage({ pageNumber: 1, append: false });
-    }, [search, statusFilter, loadPage]);
+    },  [search, statusFilter, assignedId, loadPage, role]);
 
     useEffect(() => {
         if (page <= 1) return;
@@ -191,6 +194,7 @@ export function useLeadsBoard({ statusFilter = "", search = "" } = {}) {
         allStatuses: statuses,
         lidsByStatus,
         counts,
+        refreshBoard,
         totalLids,
         loading,
         loadingMore,

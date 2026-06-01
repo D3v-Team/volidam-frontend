@@ -10,6 +10,13 @@ class apiLids {
     const response = await $api.get(`/lids/${id}`);
     return response;
   };
+  static assign = async (data) => {
+    const response = await $api.put("/lids/assign", data, {
+      showSuccessToast: "Hodim muvaffaqiyatli biriktirildi",
+    });
+
+    return response;
+  };
 
   static create = async (data) => {
     const response = await $api.post("/lids", data, {
