@@ -460,7 +460,7 @@ function RangeStatusCard({ data, total, loading, theme }) {
   );
 }
 
-export default function Dashboard() {
+export default function DashboardHome() {
   const user = useAuthStore((s) => s.user);
 
   const theme = {
