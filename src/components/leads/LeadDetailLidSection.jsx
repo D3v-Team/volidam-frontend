@@ -80,8 +80,6 @@ export default function LeadDetailLidSection({
       ota_ona_fio: parents.trim(),
     };
 
-
-
     onSave?.(data);
   };
 
@@ -89,45 +87,49 @@ export default function LeadDetailLidSection({
 
   if (!canEdit) {
     return (
-   <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-  
-  <Box>
-    <Text fontSize="xs" fontWeight="600" color="textSecondary" mb={1}>
-      Status
-    </Text>
-    <Text fontSize="md" fontWeight="700" color={statusColor}>
-      {selectedStatus?.name || lid.status?.name || "Belgilangan status mavjud emas"}
-    </Text>
-  </Box>
+      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+        <Box>
+          <Text fontSize="xs" fontWeight="600" color="textSecondary" mb={1}>
+            Status
+          </Text>
+          <Text fontSize="md" fontWeight="700" color={statusColor}>
+            {selectedStatus?.name ||
+              lid.status?.name ||
+              "Belgilangan status mavjud emas"}
+          </Text>
+        </Box>
 
-  <Box>
-    <Text fontSize="xs" fontWeight="600" color="textSecondary" mb={1}>
-      Ism Familiya
-    </Text>
-    <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="800" color="text">
-      {fio || "Ism familiya ma'lumoti mavjud emas"}
-    </Text>
-  </Box>
+        <Box>
+          <Text fontSize="xs" fontWeight="600" color="textSecondary" mb={1}>
+            Ism Familiya
+          </Text>
+          <Text
+            fontSize={{ base: "xl", md: "2xl" }}
+            fontWeight="800"
+            color="text"
+          >
+            {fio || "Ism familiya ma'lumoti mavjud emas"}
+          </Text>
+        </Box>
 
-  <Box>
-    <Text fontSize="xs" fontWeight="600" color="textSecondary" mb={1}>
-      Telefon raqami
-    </Text>
-    <Text fontSize="md" fontWeight="600" color="textSecondary">
-      {telefon || "Telefon raqami mavjud emas"}
-    </Text>
-  </Box>
+        <Box>
+          <Text fontSize="xs" fontWeight="600" color="textSecondary" mb={1}>
+            Telefon raqami
+          </Text>
+          <Text fontSize="md" fontWeight="600" color="textSecondary">
+            {telefon || "Telefon raqami mavjud emas"}
+          </Text>
+        </Box>
 
-  <Box>
-    <Text fontSize="xs" fontWeight="600" color="textSecondary" mb={1}>
-      Ota-ona
-    </Text>
-    <Text fontSize="md" fontWeight="600" color="textSecondary">
-      {parents ? `${parents}` : "Ota-ona ma'lumoti mavjud emas"}
-    </Text>
-  </Box>
-
-</SimpleGrid>
+        <Box>
+          <Text fontSize="xs" fontWeight="600" color="textSecondary" mb={1}>
+            Ota-ona
+          </Text>
+          <Text fontSize="md" fontWeight="600" color="textSecondary">
+            {parents ? `${parents}` : "Ota-ona ma'lumoti mavjud emas"}
+          </Text>
+        </Box>
+      </SimpleGrid>
     );
   }
 
@@ -137,6 +139,7 @@ export default function LeadDetailLidSection({
         <FormControl>
           <FormLabel {...volidamFormLabel}>Status</FormLabel>
           <Select
+           onKeyDown={(e)=> { if(e.key === "Enter") {handleSubmit()}}}
             {...filterFieldProps}
             value={statusId}
             onChange={(e) => setStatusId(e.target.value)}
@@ -157,6 +160,7 @@ export default function LeadDetailLidSection({
             value={parents || ""}
             onChange={(e) => setParents(e.target.value)}
             placeholder="Ota-ona ismi"
+             onKeyDown={(e)=> { if(e.key === "Enter") {handleSubmit()}}}
           />
         </FormControl>
 
@@ -167,6 +171,7 @@ export default function LeadDetailLidSection({
             value={fio}
             onChange={(e) => setFio(e.target.value)}
             placeholder="To'liq ism"
+             onKeyDown={(e)=> { if(e.key === "Enter") {handleSubmit()}}}
           />
         </FormControl>
 
@@ -177,6 +182,7 @@ export default function LeadDetailLidSection({
             value={telefon}
             onChange={(e) => setTelefon(e.target.value)}
             placeholder="+998 90 123 45 67"
+            onKeyDown={(e)=> { if(e.key === "Enter") {handleSubmit()}}}
           />
         </FormControl>
       </SimpleGrid>

@@ -126,6 +126,7 @@ export default function LidStatusFormModal({
                         <Input
                             {...filterFieldProps}
                             value={form.name}
+            
                             onChange={(e) =>
                                 setForm((p) => ({ ...p, name: e.target.value }))
                             }
@@ -142,6 +143,7 @@ export default function LidStatusFormModal({
                                 onChange={(e) =>
                                     setForm((p) => ({ ...p, color: e.target.value }))
                                 }
+
                                 w="56px"
                                 h="40px"
                                 p={1}

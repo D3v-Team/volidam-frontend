@@ -46,6 +46,7 @@ export default function LeadValueFieldsSection({
     const saveAction =
         !readOnly && onSave ? (
             <Button
+            type="submit"
                 {...volidamPrimaryButtonSm}
                 leftIcon={<Save size={15} />}
                 isLoading={saving}
@@ -120,6 +121,9 @@ export default function LeadValueFieldsSection({
                                 onChange={(e) =>
                                     onChange?.(col.id, e.target.value)
                                 }
+                                onKeyDown={(e)=> { if(e.key === "Enter") {onSave?.()}}
+                                }
+
                             />
                         </FormControl>
                     </Box>

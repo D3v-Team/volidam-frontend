@@ -129,7 +129,7 @@ export default function Operators() {
 
   const handleResetPassword = async () => {
     try {
-      await apiUsers.ResetPassword(resetId, { password: newPassword });
+      await apiUsers.ResetPassword(resetId, { new_password: newPassword });
       onResetClose();
       setNewPassword("");
     } catch {
