@@ -9,7 +9,16 @@ import {
     parseStatusesResponse,
 } from "../utils/lidBoard";
 
-export function useLeadsBoard({ statusFilter = "", search = "" , assignedId = "",  role = "", } = {}) {
+/**
+ * useLeadsBoard hook manages pagination, filtering, and data merging for the Kanban board.
+ * 
+ * Features:
+ * - Loads page 1 with all statuses
+ * - Appends additional pages on scroll
+ * - Resets to page 1 when filters change
+ * - Handles concurrent requests with fetchLock
+ */
+export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "", role = "" } = {}) {
     const [statuses, setStatuses] = useState([]);
     const [lidsByStatus, setLidsByStatus] = useState({});
     const [counts, setCounts] = useState({});
@@ -18,14 +27,24 @@ export function useLeadsBoard({ statusFilter = "", search = "" , assignedId = ""
     const [moving, setMoving] = useState(false);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
+    
     const fetchLock = useRef(0);
-    const skipPageEffectRef = useRef(false);
     const statusesRef = useRef([]);
+    const loadingMoreRef = useRef(false);  // Track loading state to prevent duplicate requests
 
     useEffect(() => {
         statusesRef.current = statuses;
     }, [statuses]);
 
+    useEffect(() => {
+        loadingMoreRef.current = loadingMore;
+    }, [loadingMore]);
+
+    /**
+     * Fetches a page of lids and either replaces or appends to state
+     * @param {number} pageNumber - Page to fetch
+     * @param {boolean} append - If true, merges with existing data; if false, replaces
+     */
     const loadPage = useCallback(
         async ({ pageNumber, append }) => {
             const fetchId = ++fetchLock.current;
@@ -33,17 +52,21 @@ export function useLeadsBoard({ statusFilter = "", search = "" , assignedId = ""
             else setLoading(true);
 
             try {
-                const lidsParams = { page: pageNumber };
+                const lidsParams = { 
+                    page: pageNumber,
+                    limit: 10
+                };
                 if (statusFilter) lidsParams.status_id = statusFilter;
-                if (assignedId) lidsParams.assigned_id = assignedId; 
+                if (assignedId) lidsParams.assigned_id = assignedId;
                 if (role) lidsParams.role = role;
 
-
+                // Page 1: fetch both statuses and lids in parallel
+                // Subsequent pages: fetch lids only
                 const [statusRes, lidsRes] =
                     pageNumber === 1
                         ? await Promise.all([
-                              apiLidStatuses.getAll(),
-                              apiLids.getList(lidsParams),
+                            apiLidStatuses.getAll(),
+                            apiLids.getList(lidsParams),
                           ])
                         : [null, await apiLids.getList(lidsParams)];
 
@@ -62,12 +85,18 @@ export function useLeadsBoard({ statusFilter = "", search = "" , assignedId = ""
                     search
                 );
 
+                // Calculate totalPages for hasMore logic
                 setTotalPages(Math.max(1, Number(pagination?.totalPages) || 1));
+                
+                // Merge or replace counts
                 setCounts((prev) => (append ? { ...prev, ...countMap } : countMap));
+                
+                // Merge or replace lids by status
                 setLidsByStatus((prev) =>
                     append ? mergeLidsGrouped(prev, grouped, statusList) : grouped
                 );
-            } catch {
+            } catch (error) {
+                console.error(`Failed to load page ${pageNumber}:`, error);
                 if (fetchId !== fetchLock.current) return;
                 if (!append) {
                     setStatuses([]);
@@ -82,31 +111,39 @@ export function useLeadsBoard({ statusFilter = "", search = "" , assignedId = ""
                 }
             }
         },
-     [search, statusFilter, assignedId, role]  
+        [search, statusFilter, assignedId, role]
     );
 
+    // Effect 1: Reset to page 1 when filters change
     useEffect(() => {
-        skipPageEffectRef.current = true;
         setPage(1);
         loadPage({ pageNumber: 1, append: false });
-    },  [search, statusFilter, assignedId, loadPage, role]);
+    }, [search, statusFilter, assignedId, loadPage, role]);
 
+    // Effect 2: Load next page when page state changes
     useEffect(() => {
         if (page <= 1) return;
-        if (skipPageEffectRef.current) {
-            skipPageEffectRef.current = false;
-            return;
-        }
         loadPage({ pageNumber: page, append: true });
     }, [page, loadPage]);
 
     const hasMore = page < totalPages;
 
+    /**
+     * Increments page state to trigger next page fetch
+     * Strictly guards against multiple concurrent requests
+     */
     const loadMore = useCallback(() => {
-        if (loading || loadingMore || !hasMore) return;
+        // CRITICAL: Check if already loading before doing ANYTHING
+        if (loadingMoreRef.current) return;
+        if (loading) return;
+        if (!hasMore) return;
+        if (page >= totalPages) return;
+        
         setPage((p) => p + 1);
-    }, [hasMore, loading, loadingMore]);
+    }, [hasMore, loading, totalPages, page]);
 
+    // ========== Other operations (move, create, update, delete) ==========
+    
     const moveLid = async (lidId, fromStatusId, toStatusId) => {
         if (fromStatusId === toStatusId) return;
 
@@ -117,12 +154,15 @@ export function useLeadsBoard({ statusFilter = "", search = "" , assignedId = ""
         setMoving(true);
         const prev = lidsByStatus;
         const prevCounts = counts;
+        
+        // Optimistic update
         const optimistic = { ...lidsByStatus };
         optimistic[fromStatusId] = sourceItems.filter((l) => l.id !== lidId);
         optimistic[toStatusId] = [
             { ...lid, status_id: toStatusId, status: { ...lid.status, id: toStatusId } },
             ...(optimistic[toStatusId] || []),
         ];
+        
         setLidsByStatus(optimistic);
         setCounts((c) => ({
             ...c,
@@ -142,7 +182,6 @@ export function useLeadsBoard({ statusFilter = "", search = "" , assignedId = ""
     };
 
     const refreshBoard = async () => {
-        skipPageEffectRef.current = true;
         setPage(1);
         await loadPage({ pageNumber: 1, append: false });
     };
@@ -199,6 +238,7 @@ export function useLeadsBoard({ statusFilter = "", search = "" , assignedId = ""
         loading,
         loadingMore,
         hasMore,
+        page,
         loadMore,
         moving,
         moveLid,

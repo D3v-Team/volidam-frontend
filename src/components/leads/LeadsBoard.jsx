@@ -112,6 +112,7 @@ export default function LeadsBoard({
     loading,
     loadingMore,
     hasMore,
+    page,
     loadMore,
     refreshBoard,
     moveLid,
@@ -169,26 +170,76 @@ export default function LeadsBoard({
   }, [allStatuses]);
 
   useEffect(() => {
-    const el = scroll.sentinelRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
+    const sentinel = scroll.sentinelRef.current;
+    const rootEl = scroll.mainScrollRef.current;
+    if (!sentinel) return;
+
+    let lastIntersectingTime = 0;  // Prevent multiple triggers in quick succession
+
+    const observer = new IntersectionObserver(
       (entries) => {
-        if (!entries[0]?.isIntersecting) return;
+        const [entry] = entries;
+        
+        // Only respond to sentinel becoming visible
+        if (!entry?.isIntersecting) return;
+        
+        // Guard: Skip if restoration in progress or session not hydrated
         if (
           scroll.restoreInProgressRef.current ||
           !scroll.sessionHydratedRef.current
-        )
-          return;
+        ) return;
+
+        // Guard: Skip if already loading
+        if (loading || loadingMore) return;
+
+        // Guard: Skip if no more pages
+        if (!hasMore) return;
+
+        // Guard: Debounce - only allow one trigger per 500ms
+        const now = Date.now();
+        if (now - lastIntersectingTime < 500) return;
+        lastIntersectingTime = now;
+
+        // Call loadMore - it has additional guards
         loadMore();
       },
       {
-        root: scroll.mainScrollRef.current,
-        rootMargin: "280px 0px",
+        root: rootEl || null,
+        rootMargin: "0px 0px",
         threshold: 0.01,
       },
     );
-    obs.observe(el);
-    return () => obs.disconnect();
+    observer.observe(sentinel);
+
+    const shouldLoadMore = () => {
+      if (loading || loadingMore || !hasMore) return false;
+      if (scroll.restoreInProgressRef.current || !scroll.sessionHydratedRef.current) return false;
+      if (!sentinel) return false;
+
+      const rootRect = rootEl
+        ? rootEl.getBoundingClientRect()
+        : {
+            top: 0,
+            bottom: window.innerHeight,
+          };
+      const sentinelRect = sentinel.getBoundingClientRect();
+      const threshold = 50;
+      return sentinelRect.top <= rootRect.bottom + threshold;
+    };
+
+    const onScroll = () => {
+      if (shouldLoadMore()) {
+        loadMore();
+      }
+    };
+
+    const targets = rootEl ? [rootEl, window] : [window];
+    targets.forEach((t) => t.addEventListener("scroll", onScroll, { passive: true }));
+
+    return () => {
+      observer.disconnect();
+      targets.forEach((t) => t.removeEventListener("scroll", onScroll));
+    };
   }, [hasMore, loading, loadingMore, loadMore, scroll]);
 
   const openCreateStatus = () => {
@@ -353,44 +404,46 @@ export default function LeadsBoard({
           Statuslar topilmadi
         </Text>
       ) : (
-        <Box w="100%" maxW="100%" minW={0} minH={0} overflow="hidden">
-          <LeadsKanbanBoard
-            boardScrollRef={scroll.boardScrollRef}
-            statuses={statuses}
-            lidsByStatus={lidsByStatus}
-            counts={counts}
-            loading={loading}
-            canManageStatuses={canManageStatuses}
-            maxVisibleColumns={maxVisibleColumns}
-            isDragOverStatusId={dragOverStatusId}
-            onDragOverStatusId={setDragOverStatusId}
-            onDragLeaveStatus={() => setDragOverStatusId(null)}
-            onDropLid={handleDrop}
-            onOpenLid={(lid) =>
-              navigate(getLeadDetailPath(leadsBasePath, lid.id))
-            }
-            onDeleteLid={canDeleteLid ? requestDeleteLid : undefined}
-            onEditStatus={(s) => {
-              setStatusFormMode("edit");
-              setSelectedStatus(s);
-              statusFormModal.onOpen();
-            }}
-            onDeleteStatus={requestDeleteStatus}
-            onPersistScroll={scroll.schedulePersistScroll}
-            assignMode={assignMode}
-            selectedLeadIds={selectedLeadIds}
-            setSelectedLeadIds={setSelectedLeadIds}
-          />
-        </Box>
-      )}
-      <Box ref={scroll.sentinelRef} h="1px" w="full" />
-      {loadingMore && (
-        <Center py={6}>
-          <HStack spacing={2} color={subtleText}>
-            <Spinner size="sm" />
-            <Text fontSize="sm">Yuklanmoqda...</Text>
-          </HStack>
-        </Center>
+        <>
+          <Box w="100%" maxW="100%" minW={0} minH={0} overflow="hidden">
+            <LeadsKanbanBoard
+              boardScrollRef={scroll.boardScrollRef}
+              sentinelRef={scroll.sentinelRef}
+              statuses={statuses}
+              lidsByStatus={lidsByStatus}
+              counts={counts}
+              loading={loading}
+              canManageStatuses={canManageStatuses}
+              maxVisibleColumns={maxVisibleColumns}
+              isDragOverStatusId={dragOverStatusId}
+              onDragOverStatusId={setDragOverStatusId}
+              onDragLeaveStatus={() => setDragOverStatusId(null)}
+              onDropLid={handleDrop}
+              onOpenLid={(lid) =>
+                navigate(getLeadDetailPath(leadsBasePath, lid.id))
+              }
+              onDeleteLid={canDeleteLid ? requestDeleteLid : undefined}
+              onEditStatus={(s) => {
+                setStatusFormMode("edit");
+                setSelectedStatus(s);
+                statusFormModal.onOpen();
+              }}
+              onDeleteStatus={requestDeleteStatus}
+              onPersistScroll={scroll.schedulePersistScroll}
+              assignMode={assignMode}
+              selectedLeadIds={selectedLeadIds}
+              setSelectedLeadIds={setSelectedLeadIds}
+            />
+          </Box>
+          {loadingMore && (
+            <Center py={6}>
+              <HStack spacing={2} color={subtleText}>
+                <Spinner size="sm" />
+                <Text fontSize="sm">Yuklanmoqda...</Text>
+              </HStack>
+            </Center>
+          )}
+        </>
       )}
     </>
   );

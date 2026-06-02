@@ -93,7 +93,7 @@ export function useLeadsBoardScroll({ roleScope = "default", statusFilter, searc
             boardEl.scrollLeft = saved.boardScrollLeft;
         }
 
-        const cancelVertical = applyRestoredPageVerticalScroll(saved, {
+            const cancelVertical = applyRestoredPageVerticalScroll(saved, {
             scrollRootRef: mainScrollRef,
             onComplete: () => {
                 restoreInProgressRef.current = false;
@@ -102,8 +102,19 @@ export function useLeadsBoardScroll({ roleScope = "default", statusFilter, searc
             },
         });
 
+        const restoreTimer = window.setTimeout(() => {
+            if (!restoreInProgressRef.current && mainScrollRef.current) {
+                const savedY = Number(saved.windowScrollY) || 0;
+                mainScrollRef.current.scrollTop = savedY;
+                restoreInProgressRef.current = false;
+                sessionHydratedRef.current = true;
+                snapshotVerticalScrollToRef(lastGoodVerticalScrollRef, mainScrollRef);
+            }
+        }, 100);
+
         return () => {
             cancelVertical?.();
+            window.clearTimeout(restoreTimer);
             restoreInProgressRef.current = false;
         };
     }, [ready, filterSig, sessionKey]);

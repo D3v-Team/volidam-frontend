@@ -6,6 +6,7 @@ import { leadsKanbanColumnLayout } from "./leadStyles";
 
 export default function LeadsKanbanBoard({
   boardScrollRef,
+  sentinelRef,
   statuses,
   lidsByStatus,
   counts,
@@ -129,6 +130,7 @@ export default function LeadsKanbanBoard({
           ))}
         </Flex>
       </Box>
+      <Box ref={sentinelRef} h="40px" w="full" />
     </Box>
   );
 }

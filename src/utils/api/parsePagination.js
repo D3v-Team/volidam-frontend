@@ -33,7 +33,11 @@ export function parsePaginatedResponse(payload) {
 
     const totalPages =
         root?.totalPages ??
+        root?.total_pages ??
+        root?.total_page ??
         root?.meta?.totalPages ??
+        root?.meta?.total_pages ??
+        root?.meta?.total_page ??
         Math.max(1, Math.ceil(total / limit));
 
     return { items, total, page, limit, totalPages };

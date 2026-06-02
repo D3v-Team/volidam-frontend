@@ -32,18 +32,98 @@ export function parseStatusesResponse(res) {
     return sortStatuses(unwrapStatuses(res?.data)).map(normalizeStatusFromApi);
 }
 
+function getColumnPagination(column) {
+    const pagination = column?.pagination;
+    if (!pagination || typeof pagination !== "object") return null;
+
+    const page =
+        pagination.page ??
+        pagination.currentPage ??
+        pagination.current_page ??
+        pagination.page_number ??
+        pagination.pageNumber ??
+        1;
+
+    const limit =
+        pagination.limit ??
+        pagination.pageSize ??
+        pagination.size ??
+        pagination.per_page ??
+        20;
+
+    const total =
+        pagination.total ??
+        pagination.totalCount ??
+        pagination.total_count ??
+        pagination.total_elements ??
+        pagination.total_elements_count ??
+        0;
+
+    const totalPages =
+        pagination.total_pages ??
+        pagination.totalPages ??
+        pagination.total_page ??
+        pagination.totalPage ??
+        Math.max(1, Math.ceil(total / limit));
+
+    return { page, limit, total, totalPages };
+}
+
 export function extractLidsPagination(res) {
     const root = res?.data ?? res;
     const inner =
         root?.data != null && typeof root.data === "object" && !Array.isArray(root.data)
             ? root.data
             : root;
-    if (inner?.totalPages != null || inner?.page != null) {
+
+    // Check for columns structure FIRST (before root pagination fields)
+    if (Array.isArray(inner?.columns) && inner.columns.length > 0) {
+        const paginationValues = inner.columns
+            .map(getColumnPagination)
+            .filter(Boolean);
+        if (paginationValues.length > 0) {
+            const page = Math.max(...paginationValues.map((p) => Number(p.page) || 1));
+            const limit = Math.max(...paginationValues.map((p) => Number(p.limit) || 20));
+            const totalPages = Math.max(...paginationValues.map((p) => Number(p.totalPages) || 1));
+            const total = paginationValues.reduce((sum, p) => sum + Number(p.total || 0), 0);
+            return { items: [], page, limit, total, totalPages };
+        }
+
+        // If columns have no pagination info, sum their totals to calculate pagination
+        const limit = Number(root?.limit ?? inner?.limit ?? 20);
+        const page = Number(root?.page ?? inner?.page ?? 1);
+        const total = inner.columns.reduce((sum, col) => sum + Number(col?.total ?? 0), 0);
+        const totalPages = Math.max(1, Math.ceil(total / limit));
+        return { items: [], page, limit, total, totalPages };
+    }
+
+    if (
+        inner?.totalPages != null ||
+        inner?.total_pages != null ||
+        inner?.total_page != null ||
+        inner?.page != null ||
+        inner?.currentPage != null ||
+        inner?.current_page != null ||
+        inner?.limit != null ||
+        inner?.pageSize != null ||
+        inner?.size != null
+    ) {
         return parsePaginatedResponse({ data: inner });
     }
-    if (root?.totalPages != null || root?.page != null) {
+    if (
+        root?.totalPages != null ||
+        root?.total_pages != null ||
+        root?.total_page != null ||
+        root?.page != null ||
+        root?.currentPage != null ||
+        root?.current_page != null ||
+        root?.limit != null ||
+        root?.pageSize != null ||
+        root?.size != null
+    ) {
         return parsePaginatedResponse({ data: root });
     }
+
     return parsePaginatedResponse(res);
 }
 
@@ -86,13 +166,18 @@ export function parseLidsBoardResponse(res, statusList, search = "") {
             const statusId = String(
                 col?.status?.id ?? col?.status_id ?? ""
             ).trim();
-            const items = (col?.items ?? []).map(normalizeLidFromApi);
+            const items = (col?.items ?? col?.data ?? []).map(normalizeLidFromApi);
             const filtered = filterLidsBySearch(items, search);
+            const columnTotal =
+                col?.pagination?.total ??
+                col?.total ??
+                col?.pagination?.totalCount ??
+                col?.totalCount ??
+                filtered.length;
 
             if (statusId) {
                 grouped[statusId] = filtered;
-                counts[statusId] =
-                    Number(col?.total) >= 0 ? Number(col.total) : filtered.length;
+                counts[statusId] = Number(columnTotal) >= 0 ? Number(columnTotal) : filtered.length;
             }
         }
 
@@ -138,7 +223,7 @@ export function parseLidsListResponse(res) {
 
     if (Array.isArray(inner?.columns)) {
         return inner.columns.flatMap((col) =>
-            (col?.items ?? []).map(normalizeLidFromApi)
+            (col?.items ?? col?.data ?? []).map(normalizeLidFromApi)
         );
     }
 
