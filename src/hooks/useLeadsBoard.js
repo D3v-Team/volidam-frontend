@@ -86,7 +86,10 @@ export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "",
                 );
 
                 // Calculate totalPages for hasMore logic
-                setTotalPages(Math.max(1, Number(pagination?.totalPages) || 1));
+                const calculatedTotalPages = Math.max(1, Number(pagination?.totalPages) || 1);
+                setTotalPages(calculatedTotalPages);
+                
+                console.log(`[useLeadsBoard] Page ${pageNumber} loaded: totalPages=${calculatedTotalPages}, hasMore=${pageNumber < calculatedTotalPages}`);
                 
                 // Merge or replace counts
                 setCounts((prev) => (append ? { ...prev, ...countMap } : countMap));
@@ -134,11 +137,24 @@ export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "",
      */
     const loadMore = useCallback(() => {
         // CRITICAL: Check if already loading before doing ANYTHING
-        if (loadingMoreRef.current) return;
-        if (loading) return;
-        if (!hasMore) return;
-        if (page >= totalPages) return;
+        if (loadingMoreRef.current) {
+            console.log('[loadMore] Skipped: already loading');
+            return;
+        }
+        if (loading) {
+            console.log('[loadMore] Skipped: loading');
+            return;
+        }
+        if (!hasMore) {
+            console.log(`[loadMore] Skipped: no more pages (page=${page}, totalPages=${totalPages})`);
+            return;
+        }
+        if (page >= totalPages) {
+            console.log(`[loadMore] Skipped: page >= totalPages (${page} >= ${totalPages})`);
+            return;
+        }
         
+        console.log(`[loadMore] Loading next page: ${page} -> ${page + 1}`);
         setPage((p) => p + 1);
     }, [hasMore, loading, totalPages, page]);
 

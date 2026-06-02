@@ -78,22 +78,15 @@ export function extractLidsPagination(res) {
 
     // Check for columns structure FIRST (before root pagination fields)
     if (Array.isArray(inner?.columns) && inner.columns.length > 0) {
-        const paginationValues = inner.columns
-            .map(getColumnPagination)
-            .filter(Boolean);
-        if (paginationValues.length > 0) {
-            const page = Math.max(...paginationValues.map((p) => Number(p.page) || 1));
-            const limit = Math.max(...paginationValues.map((p) => Number(p.limit) || 20));
-            const totalPages = Math.max(...paginationValues.map((p) => Number(p.totalPages) || 1));
-            const total = paginationValues.reduce((sum, p) => sum + Number(p.total || 0), 0);
-            return { items: [], page, limit, total, totalPages };
-        }
-
         // If columns have no pagination info, sum their totals to calculate pagination
-        const limit = Number(root?.limit ?? inner?.limit ?? 20);
+        const limit = Number(root?.limit ?? inner?.limit ?? 10);
         const page = Number(root?.page ?? inner?.page ?? 1);
         const total = inner.columns.reduce((sum, col) => sum + Number(col?.total ?? 0), 0);
         const totalPages = Math.max(1, Math.ceil(total / limit));
+        
+        // Console for debugging
+        console.log(`[Pagination] page=${page}, limit=${limit}, total=${total}, totalPages=${totalPages}`);
+        
         return { items: [], page, limit, total, totalPages };
     }
 
