@@ -62,7 +62,7 @@ export default function LeadCard({
   const hasDate = createdLabel && createdLabel !== "-";
 
   const isChecked = selectedLeadIds?.includes(lid.id);
-  console.log("assignMode", assignMode);
+
 
   return (
     <Box
@@ -152,7 +152,7 @@ export default function LeadCard({
       <Flex align="center" gap={2} mb={3}>
         <Icon as={UsersIcon} boxSize={4} color={metaColor} />
         <Text fontSize="md" fontWeight="600" color="text">
-          {parents}
+          {parents ? `Ota-ona: ${parents}` : "Ota-ona ma'lumoti mavjud emas"}
         </Text>
       </Flex>
 
@@ -169,7 +169,7 @@ export default function LeadCard({
         <Flex align="center" gap={2}>
           <Icon as={ShieldUser} boxSize={4} color={metaColor} />
           <Text fontSize="sm" fontWeight="700" color="text">
-            {assignee}
+            {assignee ? `Biriktirilgan: ${assignee}` : "Biriktirilgan shaxs mavjud emas"}
           </Text>
         </Flex>
 

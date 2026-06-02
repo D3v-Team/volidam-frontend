@@ -37,7 +37,7 @@ export function useLeadsBoard({ statusFilter = "", search = "" , assignedId = ""
                 if (statusFilter) lidsParams.status_id = statusFilter;
                 if (assignedId) lidsParams.assigned_id = assignedId; 
                 if (role) lidsParams.role = role;
-                console.log("LIDS PARAMS =>", lidsParams);
+
 
                 const [statusRes, lidsRes] =
                     pageNumber === 1

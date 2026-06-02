@@ -236,7 +236,7 @@ const canEditValues = canEditLid;
                 <MetaRow
                   icon={ShieldUser}
                   label="Biriktirilgan shaxs"
-                  value={lid.assignee.full_name || "—"}
+                  value={lid.assignee?.full_name || "Biriktirilgan shaxs mavjud emas"}
                 />
                 <MetaRow
                   icon={Clock}

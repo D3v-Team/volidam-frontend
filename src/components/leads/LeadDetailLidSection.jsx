@@ -80,7 +80,7 @@ export default function LeadDetailLidSection({
       ota_ona_fio: parents.trim(),
     };
 
-    console.log("SAVE DATA", data);
+
 
     onSave?.(data);
   };
