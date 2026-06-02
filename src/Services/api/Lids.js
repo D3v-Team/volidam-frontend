@@ -2,7 +2,12 @@ import { $api } from "../parametres/axios";
 
 class apiLids {
   static getList = async (params) => {
-    const response = await $api.get("/lids", { params });
+    const response = await $api.get("/lids", {
+      params: {
+        ...params,
+        _ts: Date.now(),
+      },
+    });
     return response;
   };
 
