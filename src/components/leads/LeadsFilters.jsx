@@ -55,7 +55,7 @@ export default function LeadsFilters({
   const [selectedUserId, setSelectedUserId] = useState("");
   const user = useAuthStore((s) => s.user);
   const handleRoleChange = async (role) => {
-    console.log("ROLE =>", role);
+
     setSelectedRole(role);
     setSelectedUserId("");
     setAssignUsers([]);
