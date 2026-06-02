@@ -177,6 +177,7 @@ export default function LeadsFilters({
   ) : (
     <>
       <Button
+      type="submit"
         colorScheme="pink"
         onClick={assignModal.onOpen}
         isDisabled={selectedLeadIds.length === 0}

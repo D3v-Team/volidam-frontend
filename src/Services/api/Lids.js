@@ -27,7 +27,7 @@ class apiLids {
 
   static update = async (id, data) => {
     const response = await $api.put(`/lids/${id}`, data, {
-      showSuccessToast: "Lid yangilandi",
+      
     });
     return response;
   };
@@ -46,15 +46,23 @@ class apiLids {
     });
   };
   static importExcel = async (file, statusId) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    if (statusId) formData.append("status_id", statusId);
-    const response = await $api.post("/lids/import/excel", formData, {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await $api.post(
+    "/lids/import/excel",
+    formData,
+    {
+      params: {
+        status_id: statusId,
+      },
       headers: { "Content-Type": "multipart/form-data" },
-      showSuccessToast: "Excel muvaffaqiyatli yuklandi",
-    });
-    return response;
-  };
+
+    }
+  );
+
+  return response;
+};
 }
 
 export { apiLids };

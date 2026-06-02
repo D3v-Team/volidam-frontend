@@ -148,6 +148,7 @@ export default function LeadFormModal({
     };
     fetchStatuses();
   }, []);
+  console.log("fetchStatuses");
 
 useEffect(() => {
   if (!isOpen) return;
@@ -261,6 +262,7 @@ useEffect(() => {
       toastService.error(getApiErrorMessage(err) || "Import amalga oshmadi");
     } finally {
       setImportLoading(false);
+    
     }
   };
 
@@ -938,7 +940,7 @@ useEffect(() => {
                 <RoleCheckboxes />
               </VStack>
             </ModalBody>
-            <ModalFooter
+            <ModalFooter as="form"
               bg={footerBg}
               borderTop="1px solid"
               borderColor={dividerColor}
@@ -950,6 +952,7 @@ useEffect(() => {
                 Bekor qilish
               </Button>
               <Button
+              type="submit"
                 {...primaryBtnStyle}
                 isLoading={loading}
                 loadingText="Saqlanmoqda..."
