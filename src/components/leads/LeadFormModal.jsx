@@ -148,7 +148,7 @@ export default function LeadFormModal({
     };
     fetchStatuses();
   }, []);
-  console.log("fetchStatuses");
+
 
 useEffect(() => {
   if (!isOpen) return;

@@ -89,7 +89,7 @@ export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "",
                 const calculatedTotalPages = Math.max(1, Number(pagination?.totalPages) || 1);
                 setTotalPages(calculatedTotalPages);
                 
-                console.log(`[useLeadsBoard] Page ${pageNumber} loaded: totalPages=${calculatedTotalPages}, hasMore=${pageNumber < calculatedTotalPages}`);
+                
                 
                 // Merge or replace counts
                 setCounts((prev) => (append ? { ...prev, ...countMap } : countMap));
