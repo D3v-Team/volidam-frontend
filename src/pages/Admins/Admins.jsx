@@ -111,7 +111,7 @@ export default function Admins() {
 
     const handleResetPassword = async () => {
         try {
-            await apiUsers.ResetPassword(resetId, { password: newPassword });
+            await apiUsers.ResetPassword(resetId, { new_password: newPassword });
             onResetClose();
             setNewPassword("");
         } catch {

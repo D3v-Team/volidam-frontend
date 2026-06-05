@@ -84,8 +84,7 @@ export function extractLidsPagination(res) {
         const total = inner.columns.reduce((sum, col) => sum + Number(col?.total ?? 0), 0);
         const totalPages = Math.max(1, Math.ceil(total / limit));
         
-        // Console for debugging
-        console.log(`[Pagination] page=${page}, limit=${limit}, total=${total}, totalPages=${totalPages}`);
+     
         
         return { items: [], page, limit, total, totalPages };
     }
