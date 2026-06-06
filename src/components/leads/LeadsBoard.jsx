@@ -15,7 +15,7 @@ import {
   ModalBody,
   ModalFooter,
 } from "@chakra-ui/react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Plus, ListPlus } from "lucide-react";
 import { getLeadDetailPath, getLeadsBasePath } from "../../utils/leadsPaths";
@@ -78,6 +78,11 @@ export default function LeadsBoard({
 
   const [assignMode, setAssignMode] = useState(false);
   const [selectedLeadIds, setSelectedLeadIds] = useState([]);
+
+  // Drag (hold) paytida chetga yaqinlashganda board surilishi uchun (native DnD)
+  const dragScrollRafRef = useRef(null);
+  const dragScrollPointerRef = useRef({ x: 0, y: 0 });
+  const dragScrollActiveRef = useRef(false);
 
   useEffect(() => {
     if (!filterRole) return;
@@ -241,6 +246,80 @@ export default function LeadsBoard({
       targets.forEach((t) => t.removeEventListener("scroll", onScroll));
     };
   }, [hasMore, loading, loadingMore, loadMore, scroll]);
+
+  // ── Drag (hold) paytida chetga yaqinlashganda board surilishi (x + y) ──
+  // Native HTML5 DnD: drag davomida `dragover` butun hujjat bo'ylab `clientX/clientY` bilan tushadi.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const EDGE = 90; // chet zonasi (px)
+    const MAX_SPEED = 24; // px/frame
+    const speedFor = (dist) =>
+      Math.ceil(Math.min(1, Math.max(0, (EDGE - dist) / EDGE)) * MAX_SPEED);
+
+    const stop = () => {
+      dragScrollActiveRef.current = false;
+      if (dragScrollRafRef.current != null) {
+        cancelAnimationFrame(dragScrollRafRef.current);
+        dragScrollRafRef.current = null;
+      }
+    };
+
+    const tick = () => {
+      const { x, y } = dragScrollPointerRef.current;
+
+      // Gorizontal — board konteyneri
+      const hEl = scroll.boardScrollRef?.current;
+      if (hEl && hEl.scrollWidth > hEl.clientWidth + 1) {
+        const r = hEl.getBoundingClientRect();
+        const dl = x - r.left;
+        const dr = r.right - x;
+        if (dr < EDGE) hEl.scrollLeft += speedFor(dr);
+        else if (dl < EDGE) hEl.scrollLeft -= speedFor(dl);
+      }
+
+      // Vertikal — asosiy konteyner (mainScrollRef), aks holda window
+      const vEl = scroll.mainScrollRef?.current;
+      if (vEl && vEl.scrollHeight > vEl.clientHeight + 1) {
+        const r = vEl.getBoundingClientRect();
+        const dt = y - r.top;
+        const db = r.bottom - y;
+        if (db < EDGE) vEl.scrollTop += speedFor(db);
+        else if (dt < EDGE) vEl.scrollTop -= speedFor(dt);
+      } else {
+        const vh = window.innerHeight;
+        if (vh - y < EDGE) window.scrollBy(0, speedFor(vh - y));
+        else if (y < EDGE) window.scrollBy(0, -speedFor(y));
+      }
+
+      dragScrollRafRef.current = requestAnimationFrame(tick);
+    };
+
+    const start = () => {
+      if (dragScrollActiveRef.current) return;
+      dragScrollActiveRef.current = true;
+      dragScrollRafRef.current = requestAnimationFrame(tick);
+    };
+
+    const onDragOver = (e) => {
+      // dragend ba'zan (0,0) beradi — uni inobatga olmaymiz
+      if (typeof e.clientX === "number" && (e.clientX || e.clientY)) {
+        dragScrollPointerRef.current = { x: e.clientX, y: e.clientY };
+      }
+      start();
+    };
+
+    window.addEventListener("dragover", onDragOver, { passive: true });
+    window.addEventListener("dragend", stop, { passive: true });
+    window.addEventListener("drop", stop, { passive: true });
+
+    return () => {
+      stop();
+      window.removeEventListener("dragover", onDragOver);
+      window.removeEventListener("dragend", stop);
+      window.removeEventListener("drop", stop);
+    };
+  }, [scroll]);
 
   const openCreateStatus = () => {
     setStatusFormMode("create");
