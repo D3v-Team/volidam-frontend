@@ -81,6 +81,38 @@ export default function LeadsPanelHeader() {
               <Users size={22} />
          <span> Lidlar</span>
         </NavLink>
+
+        <NavLink
+          to={`/${role}/shared-one`}
+          style={({ isActive }) => ({
+            fontWeight: isActive ? "800" : "500",
+            fontSize: "14px",
+            color: isActive ? "blue.500" : "inherit",
+            textDecoration: "none",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          })}
+        >
+          <LayoutDashboard size={16} />
+          <span>Umumiy 1</span>
+        </NavLink>
+
+        <NavLink
+          to={`/${role}/shared-two`}
+          style={({ isActive }) => ({
+            fontWeight: isActive ? "800" : "500",
+            fontSize: "14px",
+            color: isActive ? "blue.500" : "inherit",
+            textDecoration: "none",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          })}
+        >
+          <Users size={16} />
+          <span>Umumiy 2</span>
+        </NavLink>
       </HStack>
 
       <HStack spacing={2} flexShrink={0}>

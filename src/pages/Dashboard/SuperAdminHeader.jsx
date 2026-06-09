@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Headset,
   Users,
+  CalendarDays,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
@@ -34,6 +35,8 @@ const NAV_LINKS = [
     icon: <Headset size={16} />,
   },
   { label: "Lidlar", to: "/superadmin/leads", icon: <Users size={16} /> },
+  { label: " Toq kunlari", to: "/superadmin/shared-one", icon: <CalendarDays size={16} /> },
+  { label: "Juft kunlari", to: "/superadmin/shared-two", icon: <CalendarDays size={16} /> },
 ];
 
 export default function SuperAdminHeader() {

@@ -129,6 +129,7 @@ export default function LeadDetailLidSection({
             {parents ? `${parents}` : "Ota-ona ma'lumoti mavjud emas"}
           </Text>
         </Box>
+    
       </SimpleGrid>
     );
   }
@@ -185,6 +186,30 @@ export default function LeadDetailLidSection({
             onKeyDown={(e)=> { if(e.key === "Enter") {handleSubmit()}}}
           />
         </FormControl>
+            <Box>
+        <Text fontSize="sm" fontWeight="600" color="textSecondary" mb={1}>
+          Kunlari
+        </Text>
+          <Select width="100%">
+            <option>Kunlari</option>
+            <option>Toq</option>
+            <option>Juft</option>
+          </Select>
+        </Box>
+        <Box>
+        <Text fontSize="sm" fontWeight="600" color="textSecondary" mb={1}>
+          Vaqtlari
+        </Text>
+          <Select width="100%">
+            <option>Vaqtlari</option>
+            <option>8:00 | 9:30</option>
+            <option>9:30 | 11:00</option>
+            <option>11:00 | 12:30</option>
+            <option>12:30 | 14:00</option>
+            <option>14:00 | 15:30</option>
+            <option>15:30 | 17:00</option>
+          </Select>
+        </Box>
       </SimpleGrid>
 
       <Flex
