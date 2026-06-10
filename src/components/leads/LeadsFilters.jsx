@@ -44,6 +44,7 @@ export default function LeadsFilters({
   selectedLeadIds,
 
   setSelectedLeadIds,
+    hideAssignButton = false
 }) {
   const labelColor = useColorModeValue("textSecondary", "gray.300");
   const iconColor = useColorModeValue("brand.400", "gray.400");
@@ -55,7 +56,6 @@ export default function LeadsFilters({
   const [selectedUserId, setSelectedUserId] = useState("");
   const user = useAuthStore((s) => s.user);
   const handleRoleChange = async (role) => {
-
     setSelectedRole(role);
     setSelectedUserId("");
     setAssignUsers([]);
@@ -76,20 +76,23 @@ export default function LeadsFilters({
   };
 
   const handleAssign = async () => {
-  if (!selectedUserId) return;
+    if (!selectedUserId) return;
 
-  await onAssignLeads({
-    lid_ids: selectedLeadIds,
-    assigned_id: selectedUserId,
-  });
+    await onAssignLeads({
+      lid_ids: selectedLeadIds,
+      assigned_id: selectedUserId,
+    });
 
-  assignModal.onClose();
-  setAssignMode(false);
-  setSelectedLeadIds([]);
-  setSelectedUserId("");
-  setSelectedRole("");
-  setAssignUsers([]);
-};
+    assignModal.onClose();
+    setAssignMode(false);
+    setSelectedLeadIds([]);
+    setSelectedUserId("");
+    setSelectedRole("");
+    setAssignUsers([]);
+  };
+
+
+
 
   return (
     <>
@@ -99,6 +102,26 @@ export default function LeadsFilters({
         flexWrap="wrap"
         align={{ base: "stretch", md: "flex-end" }}
       >
+
+         <FormControl maxW={{ base: "full", md: "180px" }} flex="0 0 auto">
+          <FormLabel fontSize="xs" color={labelColor} mb={1} fontWeight="600">
+            Status
+          </FormLabel>
+          <Select
+            {...filterFieldProps}
+            size="sm"
+            h="36px"
+            value={statusId}
+            onChange={(e) => onStatusIdChange(e.target.value)}
+          >
+            <option value="">Barcha statuslar</option>
+            {statuses?.map((status) => (
+              <option key={status.id} value={status.id}>
+                {status.name}
+              </option>
+            ))}
+          </Select>
+        </FormControl>
         {/* 1: Rol tanlash */}
         <FormControl maxW={{ base: "full", md: "180px" }} flex="0 0 auto">
           <FormLabel fontSize="xs" color={labelColor} mb={1} fontWeight="600">
@@ -128,7 +151,7 @@ export default function LeadsFilters({
             h="36px"
             value={assignedId}
             onChange={(e) => onAssignedIdChange(e.target.value)}
-           isDisabled={!role || usersLoading}
+            isDisabled={!role || usersLoading}
           >
             <option value="">
               {!selectedRole
@@ -165,37 +188,39 @@ export default function LeadsFilters({
             />
           </InputGroup>
         </FormControl>
- {user?.role === "super_admin" && (
-  !assignMode ? (
-    <Button
-      size="md"
-      colorScheme="pink"
-      onClick={() => setAssignMode(true)}
-    >
-      Hodim Biriktirish
-    </Button>
-  ) : (
-    <>
+       {user?.role === "super_admin" &&
+ !hideAssignButton &&
+ (
+   !assignMode ? (
       <Button
-      type="submit"
+        size="md"
         colorScheme="pink"
-        onClick={assignModal.onOpen}
-        isDisabled={selectedLeadIds.length === 0}
+        onClick={() => setAssignMode(true)}
       >
-        Saqlash ({selectedLeadIds.length})
+        Hodim Biriktirish
       </Button>
+   ) : (
+      <>
+        <Button
+          type="submit"
+          colorScheme="pink"
+          onClick={assignModal.onOpen}
+          isDisabled={selectedLeadIds.length === 0}
+        >
+          Saqlash ({selectedLeadIds.length})
+        </Button>
 
-      <Button
-        variant="outline"
-        onClick={() => {
-          setAssignMode(false);
-          setSelectedLeadIds([]);
-        }}
-      >
-        Bekor qilish
-      </Button>
-    </>
-  )
+        <Button
+          variant="outline"
+          onClick={() => {
+            setAssignMode(false);
+            setSelectedLeadIds([]);
+          }}
+        >
+          Bekor qilish
+        </Button>
+      </>
+   )
 )}
       </Flex>
 
@@ -251,12 +276,12 @@ export default function LeadsFilters({
               Yopish
             </Button>
             <Button
-  colorScheme="pink"
-  onClick={handleAssign}
-  isDisabled={!selectedUserId}
->
-  Biriktirish
-</Button>
+              colorScheme="pink"
+              onClick={handleAssign}
+              isDisabled={!selectedUserId}
+            >
+              Biriktirish
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
