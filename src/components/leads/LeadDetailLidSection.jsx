@@ -54,13 +54,13 @@ export default function LeadDetailLidSection({
     if (!lid) return;
     setFio(lid.fio || "");
     setTelefon(lid.telefon_raqam || "");
-    setStatusId(lid.status_id || lid.status?.id || "");
+    setStatusId(String(lid.status?.id || lid.status_id || ""));
     setParents(lid.ota_ona_fio || "");
   }, [lid]);
 
   const dirty = useMemo(() => {
     if (!lid) return false;
-    const baseStatus = lid.status_id || lid.status?.id || "";
+    const baseStatus = String(lid.status?.id || lid.status_id || "");
     return (
       fio !== (lid.fio || "") ||
       telefon !== (lid.telefon_raqam || "") ||
@@ -69,7 +69,9 @@ export default function LeadDetailLidSection({
     );
   }, [lid, fio, telefon, statusId, parents]);
 
-  const selectedStatus = statuses.find((s) => s.id === statusId);
+  const selectedStatus = statuses.find(
+    (s) => String(s.id) === String(statusId),
+  );
   const statusColor = selectedStatus?.color || lid?.status?.color || "#e91e63";
 
   const dayTypes = Object.keys(selectedStatus?.child_statuses_by_type || {});
@@ -83,14 +85,12 @@ export default function LeadDetailLidSection({
   const handleSubmit = () => {
     const data = {
       fio: fio.trim(),
-
       telefon_raqam: telefon.trim(),
 
       status_id: statusId,
 
       ota_ona_fio: parents.trim(),
     };
-
     onSave?.(data);
   };
 

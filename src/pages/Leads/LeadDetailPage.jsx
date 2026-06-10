@@ -46,19 +46,18 @@ export default function LeadDetailPage() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const user = useAuthStore((s) => s.user);
-    const [lid, setLid] = useState(null);
+  const [lid, setLid] = useState(null);
   const role = user?.role;
- const canManageColumns = isSuperAdmin(role);
+  const canManageColumns = isSuperAdmin(role);
 
-const canEditLid =
-  isSuperAdmin(role) ||
-  lid?.assigned_id === user?.id ||
-  lid?.assignee?.id === user?.id;
+  const canEditLid =
+    isSuperAdmin(role) ||
+    lid?.assigned_id === user?.id ||
+    lid?.assignee?.id === user?.id;
 
-const canEditValues = canEditLid;
+  const canEditValues = canEditLid;
 
   const listPath = getLeadsBasePath(pathname);
-
 
   const [statuses, setStatuses] = useState([]);
   const [fetching, setFetching] = useState(true);
@@ -126,10 +125,14 @@ const canEditValues = canEditLid;
         ota_ona_fio,
         values,
       });
-      const currentStatus = lid.status_id || lid.status?.id || "";
-      if (status_id && status_id !== currentStatus) {
-        await apiLids.updateStatus(lid.id, status_id);
+
+      const currentStatus = String(lid.status?.id || lid.status_id || "");
+      const newStatus = String(status_id || "");
+
+      if (newStatus && newStatus !== currentStatus) {
+        await apiLids.updateStatus(lid.id, newStatus);
       }
+
       await loadData();
       toastService.success("Lid yangilandi");
     } catch (err) {
@@ -148,7 +151,6 @@ const canEditValues = canEditLid;
         fio: lid.fio,
         telefon_raqam: lid.telefon_raqam,
         ota_ona_fio: lid.ota_ona_fio,
-
         values,
       });
       await loadData();
@@ -236,7 +238,9 @@ const canEditValues = canEditLid;
                 <MetaRow
                   icon={ShieldUser}
                   label="Biriktirilgan shaxs"
-                  value={lid.assignee?.full_name || "Biriktirilgan shaxs mavjud emas"}
+                  value={
+                    lid.assignee?.full_name || "Biriktirilgan shaxs mavjud emas"
+                  }
                 />
                 <MetaRow
                   icon={Clock}
