@@ -47,6 +47,9 @@ export default function LeadDetailLidSection({
   const [statusId, setStatusId] = useState("");
   const [parents, setParents] = useState("");
 
+  const [selectedDay, setSelectedDay] = useState("");
+  const [selectedTime, setSelectedTime] = useState("");
+
   useEffect(() => {
     if (!lid) return;
     setFio(lid.fio || "");
@@ -71,11 +74,21 @@ export default function LeadDetailLidSection({
   );
   const statusColor = selectedStatus?.color || lid?.status?.color || "#e91e63";
 
+  const dayTypes = Object.keys(selectedStatus?.child_statuses_by_type || {});
+  const timeOptions =
+    selectedStatus?.child_statuses_by_type?.[selectedDay] || [];
+
+    const hasChildStatuses = Object.values(
+  selectedStatus?.child_statuses_by_type || {}
+).some((items) => items.length > 0);
+
   const handleSubmit = () => {
     const data = {
       fio: fio.trim(),
       telefon_raqam: telefon.trim(),
-      status_id: statusId, 
+
+      status_id: statusId,
+
       ota_ona_fio: parents.trim(),
     };
     onSave?.(data);
@@ -138,7 +151,9 @@ export default function LeadDetailLidSection({
           <FormLabel {...volidamFormLabel}>Status</FormLabel>
           <Select
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleSubmit();
+              if (e.key === "Enter") {
+                handleSubmit();
+              }
             }}
             {...filterFieldProps}
             value={statusId}
@@ -161,7 +176,9 @@ export default function LeadDetailLidSection({
             onChange={(e) => setParents(e.target.value)}
             placeholder="Ota-ona ismi"
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleSubmit();
+              if (e.key === "Enter") {
+                handleSubmit();
+              }
             }}
           />
         </FormControl>
@@ -174,7 +191,9 @@ export default function LeadDetailLidSection({
             onChange={(e) => setFio(e.target.value)}
             placeholder="To'liq ism"
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleSubmit();
+              if (e.key === "Enter") {
+                handleSubmit();
+              }
             }}
           />
         </FormControl>
@@ -187,10 +206,58 @@ export default function LeadDetailLidSection({
             onChange={(e) => setTelefon(e.target.value)}
             placeholder="+998 90 123 45 67"
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleSubmit();
+              if (e.key === "Enter") {
+                handleSubmit();
+              }
             }}
           />
         </FormControl>
+
+       
+       {hasChildStatuses && (
+  <>
+    <Box>
+      <Text fontSize="sm" fontWeight="600" color="textSecondary" mb={1}>
+        Kunlari
+      </Text>
+
+      <Select
+        value={selectedDay}
+        onChange={(e) => {
+          setSelectedDay(e.target.value);
+          setSelectedTime("");
+        }}
+      >
+        <option value="">Kun tanlang</option>
+
+        {dayTypes.map((day) => (
+          <option key={day} value={day}>
+            {day === "toq" ? "Toq" : "Juft"}
+          </option>
+        ))}
+      </Select>
+    </Box>
+
+    <Box>
+      <Text fontSize="sm" fontWeight="600" color="textSecondary" mb={1}>
+        Vaqtlari
+      </Text>
+
+      <Select
+        value={selectedTime}
+        onChange={(e) => setSelectedTime(e.target.value)}
+      >
+        <option value="">Vaqt tanlang</option>
+
+        {timeOptions.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.name}
+          </option>
+        ))}
+      </Select>
+    </Box>
+  </>
+)}
       </SimpleGrid>
 
       <Flex

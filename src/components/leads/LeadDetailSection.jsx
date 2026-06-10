@@ -47,7 +47,7 @@ export default function LeadDetailSection({
                             color="text"
                             letterSpacing="-0.01em"
                         >
-                            {title}
+                         {title}
                         </Text>
                         {subtitle ? (
                             <Text fontSize="sm" color="textSecondary" mt={1} lineHeight="short">

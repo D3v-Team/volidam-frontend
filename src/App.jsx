@@ -11,7 +11,9 @@ import Login from "./pages/Login/Login";
 import Register from "./pages/Register/Register";
 import Leads from "./pages/Leads/Leads";
 import LeadDetailPage from "./pages/Leads/LeadDetailPage";
-import Dashboard from "./pages/Dashboard/Dashboard"; // Dashboardni import qilish
+import Dashboard from "./pages/Dashboard/Dashboard";
+import SharedPageOne from "./pages/Shared/SharedPageOne";
+import SharedPageTwo from "./pages/Shared/SharedPageTwo";
 import { ROLES } from "./utils/roles";
 
 function App() {
@@ -39,8 +41,9 @@ function App() {
         <Route element={<RequireAuth role={ROLES.ADMIN} />}>
           <Route path="/admin" element={<LeadsPanelLayout />}>
             <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />{" "}
-            {/* Dashboard route */}
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="shared-one" element={<SharedPageOne />} />
+            <Route path="shared-two" element={<SharedPageTwo />} />
             <Route path="leads" element={<Leads />} />
             <Route path="leads/:id" element={<LeadDetailPage />} />
           </Route>
@@ -49,8 +52,9 @@ function App() {
         <Route element={<RequireAuth role={ROLES.OPERATOR} />}>
           <Route path="/operator" element={<LeadsPanelLayout />}>
             <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />{" "}
-            {/* Dashboard route */}
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="shared-one" element={<SharedPageOne />} />
+            <Route path="shared-two" element={<SharedPageTwo />} />
             <Route path="leads" element={<Leads />} />
             <Route path="leads/:id" element={<LeadDetailPage />} />
           </Route>
