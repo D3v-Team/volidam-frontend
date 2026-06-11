@@ -16,7 +16,6 @@ import {
   ModalBody,
   ModalFooter,
   useDisclosure,
-  Toast,
 } from "@chakra-ui/react";
 import { useAuthStore } from "../../store/authStore";
 import { Search } from "lucide-react";
@@ -40,12 +39,10 @@ export default function LeadsFilters({
   assignMode,
   onAssignLeads,
   setAssignMode,
-
   selectedLeadIds,
-
   setSelectedLeadIds,
-    hideAssignButton = false,
-    hideStatusFilter = false,
+  hideAssignButton = false,
+  hideStatusFilter = false,
 }) {
   const labelColor = useColorModeValue("textSecondary", "gray.300");
   const iconColor = useColorModeValue("brand.400", "gray.400");
@@ -56,18 +53,15 @@ export default function LeadsFilters({
   const [assignUsersLoading, setAssignUsersLoading] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
   const user = useAuthStore((s) => s.user);
+
   const handleRoleChange = async (role) => {
     setSelectedRole(role);
     setSelectedUserId("");
     setAssignUsers([]);
-
     if (!role) return;
-
     setAssignUsersLoading(true);
-
     try {
       const res = await apiUsers.getUsers(role);
-
       setAssignUsers(res.data?.data ?? res.data ?? []);
     } catch {
       setAssignUsers([]);
@@ -78,12 +72,10 @@ export default function LeadsFilters({
 
   const handleAssign = async () => {
     if (!selectedUserId) return;
-
     await onAssignLeads({
       lid_ids: selectedLeadIds,
       assigned_id: selectedUserId,
     });
-
     assignModal.onClose();
     setAssignMode(false);
     setSelectedLeadIds([]);
@@ -92,8 +84,17 @@ export default function LeadsFilters({
     setAssignUsers([]);
   };
 
+  // Barcha userlar uchun faqat Keldi va Keladi
+  const getFilteredStatuses = () => {
+    if (!statuses) return [];
+    return statuses.filter(
+      (s) =>
+        s.name?.toLowerCase() === "keldi" ||
+        s.name?.toLowerCase() === "keladi"
+    );
+  };
 
-
+  const filteredStatuses = getFilteredStatuses();
 
   return (
     <>
@@ -103,7 +104,6 @@ export default function LeadsFilters({
         flexWrap="wrap"
         align={{ base: "stretch", md: "flex-end" }}
       >
-
         {!hideStatusFilter ? (
           <FormControl maxW={{ base: "full", md: "180px" }} flex="0 0 auto">
             <FormLabel fontSize="xs" color={labelColor} mb={1} fontWeight="600">
@@ -116,8 +116,8 @@ export default function LeadsFilters({
               value={statusId}
               onChange={(e) => onStatusIdChange(e.target.value)}
             >
-              <option value="">Barcha statuslar</option>
-              {statuses?.map((status) => (
+              <option value="">Status tanlang</option>
+              {filteredStatuses.map((status) => (
                 <option key={status.id} value={status.id}>
                   {status.name}
                 </option>
@@ -125,7 +125,8 @@ export default function LeadsFilters({
             </Select>
           </FormControl>
         ) : null}
-        {/* 1: Rol tanlash */}
+
+        {/* Rol tanlash */}
         <FormControl maxW={{ base: "full", md: "180px" }} flex="0 0 auto">
           <FormLabel fontSize="xs" color={labelColor} mb={1} fontWeight="600">
             Rol
@@ -143,7 +144,7 @@ export default function LeadsFilters({
           </Select>
         </FormControl>
 
-        {/* 2: Hodim tanlash — rol tanlanganda faollashadi */}
+        {/* Hodim tanlash */}
         <FormControl maxW={{ base: "full", md: "180px" }} flex="0 0 auto">
           <FormLabel fontSize="xs" color={labelColor} mb={1} fontWeight="600">
             Hodim
@@ -157,7 +158,7 @@ export default function LeadsFilters({
             isDisabled={!role || usersLoading}
           >
             <option value="">
-              {!selectedRole
+              {!role
                 ? "Avval rol tanlang"
                 : usersLoading
                   ? "Yuklanmoqda..."
@@ -171,9 +172,7 @@ export default function LeadsFilters({
           </Select>
         </FormControl>
 
-        {/* 3: Status */}
-
-        {/* 4: Qidiruv */}
+        {/* Qidiruv */}
         <FormControl w={{ base: "full", md: "450px" }} flex="0 0 auto">
           <FormLabel fontSize="xs" color={labelColor} mb={1} fontWeight="600">
             Qidiruv
@@ -191,80 +190,66 @@ export default function LeadsFilters({
             />
           </InputGroup>
         </FormControl>
-       {user?.role === "super_admin" &&
- !hideAssignButton &&
- (
-   !assignMode ? (
-      <Button
-        size="md"
-        colorScheme="pink"
-        onClick={() => setAssignMode(true)}
-      >
-        Hodim Biriktirish
-      </Button>
-   ) : (
-      <>
-        <Button
-          type="submit"
-          colorScheme="pink"
-          onClick={assignModal.onOpen}
-          isDisabled={selectedLeadIds.length === 0}
-        >
-          Saqlash ({selectedLeadIds.length})
-        </Button>
 
-        <Button
-          variant="outline"
-          onClick={() => {
-            setAssignMode(false);
-            setSelectedLeadIds([]);
-          }}
-        >
-          Bekor qilish
-        </Button>
-      </>
-   )
-)}
+        {user?.role === "super_admin" && !hideAssignButton && (
+          !assignMode ? (
+            <Button
+              size="md"
+              colorScheme="pink"
+              onClick={() => setAssignMode(true)}
+            >
+              Hodim Biriktirish
+            </Button>
+          ) : (
+            <>
+              <Button
+                type="submit"
+                colorScheme="pink"
+                onClick={assignModal.onOpen}
+                isDisabled={selectedLeadIds.length === 0}
+              >
+                Saqlash ({selectedLeadIds.length})
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setAssignMode(false);
+                  setSelectedLeadIds([]);
+                }}
+              >
+                Bekor qilish
+              </Button>
+            </>
+          )
+        )}
       </Flex>
 
-      <Modal
-        isOpen={assignModal.isOpen}
-        onClose={assignModal.onClose}
-        isCentered
-      >
+      <Modal isOpen={assignModal.isOpen} onClose={assignModal.onClose} isCentered>
         <ModalOverlay />
-
         <ModalContent>
           <ModalHeader>Hodim biriktirish</ModalHeader>
-
           <ModalBody>
             <FormControl mb={4}>
               <FormLabel>Rol</FormLabel>
-
               <Select
                 value={selectedRole}
                 onChange={(e) => handleRoleChange(e.target.value)}
               >
                 <option value="">Rol tanlang</option>
-
                 <option value="operator">Operator</option>
-
                 <option value="admin">Admin</option>
               </Select>
             </FormControl>
-
             <FormControl>
               <FormLabel>Hodim</FormLabel>
-
               <Select
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
-                isDisabled={!selectedRole || usersLoading}
+                isDisabled={!selectedRole || assignUsersLoading}
               >
                 <option value="">
                   {assignUsersLoading ? "Yuklanmoqda..." : "Hodim tanlang"}
                 </option>
-
                 {assignUsers.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.fio ?? u.name ?? u.full_name ?? u.id}
@@ -273,7 +258,6 @@ export default function LeadsFilters({
               </Select>
             </FormControl>
           </ModalBody>
-
           <ModalFooter>
             <Button mr={3} onClick={assignModal.onClose}>
               Yopish
