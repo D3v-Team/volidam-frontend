@@ -12,6 +12,7 @@ export default function LeadsKanbanBoard({
   counts,
   loading,
   canManageStatuses,
+  canManageChildStatuses = false,
   maxVisibleColumns = 4,
   isDragOverStatusId,
   onDragOverStatusId,
@@ -21,7 +22,11 @@ export default function LeadsKanbanBoard({
   onDeleteLid,
   onEditStatus,
   onDeleteStatus,
+  onAddChildStatus,
+  onAddCategory,
   onPersistScroll,
+  isFiltered = false,
+  showFilteredChildren = false,
   assignMode,
   selectedLeadIds,
   setSelectedLeadIds,
@@ -115,6 +120,7 @@ export default function LeadsKanbanBoard({
               loading={loading}
               colLayout={colLayout}
               canManageStatuses={canManageStatuses}
+              canManageChildStatuses={canManageChildStatuses}
               isDragOver={isDragOverStatusId === status.id}
               onDragOver={onDragOverStatusId}
               onDragLeave={onDragLeaveStatus}
@@ -123,6 +129,10 @@ export default function LeadsKanbanBoard({
               onDeleteLid={onDeleteLid}
               onEditStatus={onEditStatus}
               onDeleteStatus={onDeleteStatus}
+              onAddChildStatus={onAddChildStatus}
+              onAddCategory={onAddCategory}
+              isFiltered={isFiltered}
+              showFilteredChildren={showFilteredChildren}
               assignMode={assignMode}
               selectedLeadIds={selectedLeadIds}
               setSelectedLeadIds={setSelectedLeadIds}
