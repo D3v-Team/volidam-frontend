@@ -9,6 +9,7 @@ import {
   Text,
   Box,
   Badge,
+  HStack,
   useColorModeValue,
 } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
@@ -46,7 +47,6 @@ export default function LeadDetailLidSection({
   const [telefon, setTelefon] = useState("");
   const [statusId, setStatusId] = useState("");
   const [parents, setParents] = useState("");
-
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
 
@@ -78,17 +78,15 @@ export default function LeadDetailLidSection({
   const timeOptions =
     selectedStatus?.child_statuses_by_type?.[selectedDay] || [];
 
-    const hasChildStatuses = Object.values(
-  selectedStatus?.child_statuses_by_type || {}
-).some((items) => items.length > 0);
+  const hasChildStatuses = Object.values(
+    selectedStatus?.child_statuses_by_type || {}
+  ).some((items) => items.length > 0);
 
   const handleSubmit = () => {
     const data = {
       fio: fio.trim(),
       telefon_raqam: telefon.trim(),
-
       status_id: statusId,
-
       ota_ona_fio: parents.trim(),
     };
     onSave?.(data);
@@ -114,11 +112,7 @@ export default function LeadDetailLidSection({
           <Text fontSize="xs" fontWeight="600" color="textSecondary" mb={1}>
             Ism Familiya
           </Text>
-          <Text
-            fontSize={{ base: "xl", md: "2xl" }}
-            fontWeight="800"
-            color="text"
-          >
+          <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="800" color="text">
             {fio || "Ism familiya ma'lumoti mavjud emas"}
           </Text>
         </Box>
@@ -150,14 +144,14 @@ export default function LeadDetailLidSection({
         <FormControl>
           <FormLabel {...volidamFormLabel}>Status</FormLabel>
           <Select
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleSubmit();
-              }
-            }}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
             {...filterFieldProps}
             value={statusId}
-            onChange={(e) => setStatusId(e.target.value)}
+            onChange={(e) => {
+              setStatusId(e.target.value);
+              setSelectedDay("");
+              setSelectedTime("");
+            }}
           >
             <option value="">Status tanlang</option>
             {statuses.map((s) => (
@@ -175,11 +169,7 @@ export default function LeadDetailLidSection({
             value={parents || ""}
             onChange={(e) => setParents(e.target.value)}
             placeholder="Ota-ona ismi"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleSubmit();
-              }
-            }}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
           />
         </FormControl>
 
@@ -190,11 +180,7 @@ export default function LeadDetailLidSection({
             value={fio}
             onChange={(e) => setFio(e.target.value)}
             placeholder="To'liq ism"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleSubmit();
-              }
-            }}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
           />
         </FormControl>
 
@@ -205,59 +191,59 @@ export default function LeadDetailLidSection({
             value={telefon}
             onChange={(e) => setTelefon(e.target.value)}
             placeholder="+998 90 123 45 67"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleSubmit();
-              }
-            }}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
           />
         </FormControl>
 
-       
-       {hasChildStatuses && (
-  <>
-    <Box>
-      <Text fontSize="sm" fontWeight="600" color="textSecondary" mb={1}>
-        Kunlari
-      </Text>
+        {/* ── Kun (toq/juft) toggle tugmalar ── */}
+        {hasChildStatuses && (
+          <>
+            <Box>
+              <Text fontSize="sm" fontWeight="600" color="textSecondary" mb={2}>
+                Kunlari
+              </Text>
+              <HStack spacing={2}>
+                {dayTypes.map((day) => (
+                  <Button
+                    key={day}
+                    size="sm"
+                    borderRadius="lg"
+                    fontWeight="700"
+                    variant={selectedDay === day ? "solid" : "outline"}
+                    colorScheme={selectedDay === day ? "brand" : "gray"}
+                    onClick={() => {
+                      setSelectedDay((prev) => (prev === day ? "" : day));
+                      setSelectedTime("");
+                    }}
+                  >
+                    {day === "toq" ? "Toq" : "Juft"}
+                  </Button>
+                ))}
+              </HStack>
+            </Box>
 
-      <Select
-        value={selectedDay}
-        onChange={(e) => {
-          setSelectedDay(e.target.value);
-          setSelectedTime("");
-        }}
-      >
-        <option value="">Kun tanlang</option>
-
-        {dayTypes.map((day) => (
-          <option key={day} value={day}>
-            {day === "toq" ? "Toq" : "Juft"}
-          </option>
-        ))}
-      </Select>
-    </Box>
-
-    <Box>
-      <Text fontSize="sm" fontWeight="600" color="textSecondary" mb={1}>
-        Vaqtlari
-      </Text>
-
-      <Select
-        value={selectedTime}
-        onChange={(e) => setSelectedTime(e.target.value)}
-      >
-        <option value="">Vaqt tanlang</option>
-
-        {timeOptions.map((item) => (
-          <option key={item.id} value={item.id}>
-            {item.name}
-          </option>
-        ))}
-      </Select>
-    </Box>
-  </>
-)}
+            <Box>
+              <Text fontSize="sm" fontWeight="600" color="textSecondary" mb={1}>
+                Vaqtlari
+              </Text>
+              <Select
+                {...filterFieldProps}
+                value={selectedTime}
+                onChange={(e) => setSelectedTime(e.target.value)}
+                isDisabled={!selectedDay}
+              >
+                <option value="">
+                  {selectedDay ? "Vaqt tanlang" : "Avval kun tanlang"}
+                </option>
+                {timeOptions.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </Select>
+            </Box>
+          </>
+        )}
       </SimpleGrid>
 
       <Flex
@@ -269,12 +255,7 @@ export default function LeadDetailLidSection({
         borderColor="border"
       >
         {dirty ? (
-          <Badge
-            colorScheme="orange"
-            variant="subtle"
-            borderRadius="full"
-            px={3}
-          >
+          <Badge colorScheme="orange" variant="subtle" borderRadius="full" px={3}>
             Saqlanmagan o&apos;zgarishlar
           </Badge>
         ) : (

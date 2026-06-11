@@ -44,7 +44,8 @@ export default function LeadsFilters({
   selectedLeadIds,
 
   setSelectedLeadIds,
-    hideAssignButton = false
+    hideAssignButton = false,
+    hideStatusFilter = false,
 }) {
   const labelColor = useColorModeValue("textSecondary", "gray.300");
   const iconColor = useColorModeValue("brand.400", "gray.400");
@@ -103,25 +104,27 @@ export default function LeadsFilters({
         align={{ base: "stretch", md: "flex-end" }}
       >
 
-         <FormControl maxW={{ base: "full", md: "180px" }} flex="0 0 auto">
-          <FormLabel fontSize="xs" color={labelColor} mb={1} fontWeight="600">
-            Status
-          </FormLabel>
-          <Select
-            {...filterFieldProps}
-            size="sm"
-            h="36px"
-            value={statusId}
-            onChange={(e) => onStatusIdChange(e.target.value)}
-          >
-            <option value="">Barcha statuslar</option>
-            {statuses?.map((status) => (
-              <option key={status.id} value={status.id}>
-                {status.name}
-              </option>
-            ))}
-          </Select>
-        </FormControl>
+        {!hideStatusFilter ? (
+          <FormControl maxW={{ base: "full", md: "180px" }} flex="0 0 auto">
+            <FormLabel fontSize="xs" color={labelColor} mb={1} fontWeight="600">
+              Status
+            </FormLabel>
+            <Select
+              {...filterFieldProps}
+              size="sm"
+              h="36px"
+              value={statusId}
+              onChange={(e) => onStatusIdChange(e.target.value)}
+            >
+              <option value="">Barcha statuslar</option>
+              {statuses?.map((status) => (
+                <option key={status.id} value={status.id}>
+                  {status.name}
+                </option>
+              ))}
+            </Select>
+          </FormControl>
+        ) : null}
         {/* 1: Rol tanlash */}
         <FormControl maxW={{ base: "full", md: "180px" }} flex="0 0 auto">
           <FormLabel fontSize="xs" color={labelColor} mb={1} fontWeight="600">
