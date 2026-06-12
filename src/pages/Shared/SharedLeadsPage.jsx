@@ -184,7 +184,7 @@ export default function SharedLeadsPage({ dayType = DAY_TYPES.TOQ }) {
           </Text>
         </Box>
 
-        <Box borderRadius="2xl" p={{ base: 3, md: 4 }} bg={panelBg} boxShadow="sm">
+        <Box borderRadius="2xl" p={{ base: 3, md: 4 }} boxShadow="sm">
           <Flex
             justify="space-between"
             align={{ base: "stretch", md: "center" }}

@@ -20,7 +20,7 @@ import {
 import { useAuthStore } from "../../store/authStore";
 import { Search } from "lucide-react";
 import { filterFieldProps, searchFieldProps } from "./leadStyles";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@chakra-ui/react";
 import { apiUsers } from "../../Services/api/Users";
 
@@ -96,6 +96,23 @@ export default function LeadsFilters({
 
   const filteredStatuses = getFilteredStatuses();
 
+  // Automatically select "keldi" for super admin if not set
+  useEffect(() => {
+    if (
+      user?.role === "super_admin" &&
+      filteredStatuses.length &&
+      !statusId
+    ) {
+      // Try to find 'keldi' in filteredStatuses
+      const keldiStatus = filteredStatuses.find(
+        (s) => s.name?.toLowerCase() === "keladi"
+      );
+      if (keldiStatus) {
+        onStatusIdChange(keldiStatus.id);
+      }
+    }
+  }, [user?.role, filteredStatuses, statusId, onStatusIdChange]);
+
   return (
     <>
       <Flex
@@ -116,7 +133,13 @@ export default function LeadsFilters({
               value={statusId}
               onChange={(e) => onStatusIdChange(e.target.value)}
             >
-              <option value="">Status tanlang</option>
+              {/* 
+                Super admin bo'lsa va "keldi" statusi bor bo'lsa, default optionni ko'rsatmaymiz.
+                Aks holda, eski "Status tanlang" optioni avvalgidek ishlaydi.
+              */}
+              {!(user?.role === "super_admin" && filteredStatuses.some(s => s.name?.toLowerCase() === "keldi")) && (
+                <option value="">Status tanlang</option>
+              )}
               {filteredStatuses.map((status) => (
                 <option key={status.id} value={status.id}>
                   {status.name}

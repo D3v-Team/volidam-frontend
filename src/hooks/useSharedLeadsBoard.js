@@ -135,9 +135,16 @@ export function useSharedLeadsBoard({
   );
 
   // ── Drag & Drop ──
-  const moveLidToChildStatus = useCallback(async (lidId, toChildStatusId) => {
-    await apiLids.updateStatus(lidId, toChildStatusId);
-  }, []);
+  // Kanban ichida child statuslar o'rtasida sudrab o'tkazilganda
+  // PUT /lids/{id}/child-status endpointiga yuboriladi
+  const moveLidToChildStatus = useCallback(
+    async (lidId, toChildStatusId) => {
+      await apiLids.updateChildStatus(lidId, toChildStatusId);
+      // Board ni yangilash — lid yangi ustunda ko'rinsin
+      fetchBoard();
+    },
+    [fetchBoard]
+  );
 
   const totalLids = Object.values(counts).reduce(
     (sum, c) => sum + Number(c),

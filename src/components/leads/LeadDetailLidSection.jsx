@@ -20,6 +20,17 @@ import {
   volidamPrimaryButton,
 } from "./leadStyles";
 
+/**
+ * LeadDetailLidSection
+ *
+ * --- MUAMMO ---
+ * status va kun/vaqt (child status) tanlansa ham, child_status_id apiga uzatilmayapti.
+ * Clientdan child_status_id ni aniq jo'natish shart.
+ * Apiga {child_status_id: ...} bo'sh emas qiymat borishi kerak, tanlab kiritilsa.
+ *
+ * ✨ YANGILASH: child_status_id — faqat va faqat Vaqtlari (child) dagi IDlardan birini yuborishi shart!
+ */
+
 export default function LeadDetailLidSection({
   lid,
   statuses = [],
@@ -34,6 +45,25 @@ export default function LeadDetailLidSection({
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedTime, setSelectedTime] = useState(""); // child_status_id
 
+  // --- NEW: statik qiymatlarni xotirada saqlash (hooklarni to'g'ri ishlashini ta'minlash uchun) ---
+  const selectedStatus = statuses.find(
+    (s) => String(s.id) === String(statusId)
+  );
+  const statusColor = selectedStatus?.color || lid?.status?.color || "#e91e63";
+  const dayTypes = Object.keys(selectedStatus?.child_statuses_by_type || {});
+  const timeOptions =
+    (selectedStatus?.child_statuses_by_type?.[selectedDay] || []);
+
+  // Yangi: All Vaqtlari (child statuses) IDlarini massivga to'plash
+  const allChildStatusIds = [];
+  if (selectedStatus && selectedStatus.child_statuses_by_type) {
+    Object.values(selectedStatus.child_statuses_by_type || {}).forEach(childsArr => {
+      childsArr.forEach(child => allChildStatusIds.push(String(child.id)));
+    });
+  }
+
+  const hasChildStatuses = allChildStatusIds.length > 0;
+
   useEffect(() => {
     if (!lid) return;
     setFio(lid.fio || "");
@@ -43,32 +73,47 @@ export default function LeadDetailLidSection({
 
     // child_status_id dan boshlang'ich qiymat
     const childId = lid.child_status_id || "";
-    setSelectedTime(childId);
+
+    // faqat agar allChildStatusIds ichida bo'lsa, o'zlashtiramiz
+    // (bu, eski/yaroqsiz qiymatga ega bo'lsa, keyin reset qilamiz)
+    setSelectedTime(
+      childId && allChildStatusIds.includes(String(childId))
+        ? String(childId)
+        : ""
+    );
 
     // Agar child_status_id bo'lsa — qaysi dayType ga tegishli ekanini topamiz
-    if (childId) {
-      const currentStatus = statuses.find(
+    if (childId && allChildStatusIds.includes(String(childId))) {
+      const curr = statuses.find(
         (s) => String(s.id) === String(lid.status?.id || lid.status_id)
       );
-      if (currentStatus?.child_statuses_by_type) {
+      if (curr?.child_statuses_by_type) {
+        let foundDay = "";
         for (const [day, children] of Object.entries(
-          currentStatus.child_statuses_by_type
+          curr.child_statuses_by_type
         )) {
           if (children.some((c) => String(c.id) === String(childId))) {
-            setSelectedDay(day);
+            foundDay = day;
             break;
           }
         }
+        setSelectedDay(foundDay);
       }
     } else {
       setSelectedDay("");
     }
+  // eslint-disable-next-line
   }, [lid, statuses]);
 
+  // FORM "dirty" holati tekshiruvi
   const dirty = useMemo(() => {
     if (!lid) return false;
     const baseStatus = String(lid.status?.id || lid.status_id || "");
-    const baseChild = lid.child_status_id || "";
+    // Faqat allChildStatusIds ichidagina child_status_idni tenglashtiramiz. Aks holda, bo'sh deb hisoblash kerak.
+    const baseChild = allChildStatusIds.includes(String(lid.child_status_id))
+      ? String(lid.child_status_id)
+      : "";
+
     return (
       fio !== (lid.fio || "") ||
       telefon !== (lid.telefon_raqam || "") ||
@@ -76,28 +121,25 @@ export default function LeadDetailLidSection({
       parents !== (lid.ota_ona_fio || "") ||
       selectedTime !== baseChild
     );
-  }, [lid, fio, telefon, statusId, parents, selectedTime]);
+  // eslint-disable-next-line
+  }, [lid, fio, telefon, statusId, parents, selectedTime, allChildStatusIds.join(",")]);
 
-  const selectedStatus = statuses.find(
-    (s) => String(s.id) === String(statusId)
-  );
-  const statusColor = selectedStatus?.color || lid?.status?.color || "#e91e63";
-
-  const dayTypes = Object.keys(selectedStatus?.child_statuses_by_type || {});
-  const timeOptions = selectedStatus?.child_statuses_by_type?.[selectedDay] || [];
-
-  const hasChildStatuses = Object.values(
-    selectedStatus?.child_statuses_by_type || {}
-  ).some((items) => items.length > 0);
-
+  // --- NEW: handleSubmit yangilandi ---
   const handleSubmit = () => {
+    // Faqat Vaqt options dagi value(child_status_id) laridan birini qabul qilish!
+    const validChildStatus =
+      hasChildStatuses && allChildStatusIds.includes(selectedTime)
+        ? selectedTime
+        : null;
+
     const data = {
       fio: fio.trim(),
       telefon_raqam: telefon.trim(),
       status_id: statusId,
       ota_ona_fio: parents.trim(),
-      child_status_id: selectedTime || null, // <-- child status id yuboriladi
+      child_status_id: validChildStatus,
     };
+
     onSave?.(data);
   };
 
@@ -105,6 +147,18 @@ export default function LeadDetailLidSection({
 
   // ── Read-only ko'rinish ──
   if (!canEdit) {
+    // Vaqtni chiqarishda har doim status+daydan topilsin
+    let vaqtiName = "";
+    if (
+      selectedTime &&
+      selectedDay &&
+      Array.isArray(timeOptions) &&
+      allChildStatusIds.includes(selectedTime)
+    ) {
+      const found = timeOptions.find((t) => String(t.id) === String(selectedTime));
+      vaqtiName = found?.name || "";
+    }
+
     return (
       <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
         <Box>
@@ -150,14 +204,13 @@ export default function LeadDetailLidSection({
         </Box>
 
         {/* Read-only: child status ko'rinishi */}
-        {selectedTime && (
+        {selectedTime && vaqtiName && (
           <Box>
             <Text fontSize="xs" fontWeight="600" color="textSecondary" mb={1}>
               Vaqti
             </Text>
             <Text fontSize="md" fontWeight="600" color="textSecondary">
-              {timeOptions.find((t) => String(t.id) === selectedTime)?.name ||
-                selectedTime}
+              {vaqtiName}
             </Text>
           </Box>
         )}
@@ -231,7 +284,7 @@ export default function LeadDetailLidSection({
           />
         </FormControl>
 
-        {/* ── Kun (toq/juft) + Vaqt tanlash ── */}
+        {/* --- Kun (toq/juft) + Vaqt tanlash --- */}
         {hasChildStatuses && (
           <>
             <Box>

@@ -1,19 +1,21 @@
 import {
   Box,
   Button,
-  Text,
-  VStack,
-  SimpleGrid,
-  Skeleton,
-  HStack,
+  Center,
   Flex,
-  Icon,
   Grid,
   GridItem,
+  HStack,
+  Icon,
+  SimpleGrid,
+  Skeleton,
+  Stack,
+  Text,
+  VStack,
 } from "@chakra-ui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { ArrowLeft, User, Clock, ShieldUser } from "lucide-react";
+import { ArrowLeft, Clock, ShieldUser, User } from "lucide-react";
 import { apiLids } from "../../Services/api/Lids";
 import { apiLidColumns } from "../../Services/api/LidColumns";
 import { apiLidStatuses } from "../../Services/api/LidStatuses";
@@ -33,7 +35,7 @@ import {
 import { getLeadsBasePath } from "../../utils/leadsPaths";
 import { toastService } from "../../utils/toast";
 import { useAuthStore } from "../../store/authStore";
-import { isAdmin, isOperator, isSuperAdmin } from "../../utils/roles";
+import { isSuperAdmin } from "../../utils/roles";
 import LeadDetailSection from "../../components/leads/LeadDetailSection";
 import LeadDetailLidSection from "../../components/leads/LeadDetailLidSection";
 import { volidamGhostButton } from "../../components/leads/leadStyles";
@@ -46,7 +48,16 @@ export default function LeadDetailPage() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const user = useAuthStore((s) => s.user);
+
   const [lid, setLid] = useState(null);
+  const [statuses, setStatuses] = useState([]);
+  const [fetching, setFetching] = useState(true);
+  const [columnDefs, setColumnDefs] = useState([]);
+  const [valueForm, setValueForm] = useState({});
+  const [savedSnapshot, setSavedSnapshot] = useState({});
+  const [savingLid, setSavingLid] = useState(false);
+  const [savingValues, setSavingValues] = useState(false);
+
   const role = user?.role;
   const canManageColumns = isSuperAdmin(role);
 
@@ -59,14 +70,10 @@ export default function LeadDetailPage() {
 
   const listPath = getLeadsBasePath(pathname);
 
-  const [statuses, setStatuses] = useState([]);
-  const [fetching, setFetching] = useState(true);
-  const [columnDefs, setColumnDefs] = useState([]);
-  const [valueForm, setValueForm] = useState({});
-  const [savedSnapshot, setSavedSnapshot] = useState({});
-  const [savingLid, setSavingLid] = useState(false);
-  const [savingValues, setSavingValues] = useState(false);
+  const isPanel =
+    pathname.startsWith("/admin") || pathname.startsWith("/operator");
 
+  // ─── Data loader ───────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     if (!id) return;
     setFetching(true);
@@ -76,12 +83,14 @@ export default function LeadDetailPage() {
         apiLids.getById(id),
         apiLidStatuses.getAll(),
       ]);
+
       const cols = parseLidColumnsResponse(colRes);
       const entity = normalizeLidFromApi(unwrapEntity(lidRes.data));
       const form = buildColumnValueFormState(entity, cols);
       const statusList = sortStatuses(unwrapStatuses(statusRes?.data)).map(
-        normalizeStatusFromApi,
+        normalizeStatusFromApi
       );
+
       setColumnDefs(cols);
       setStatuses(statusList);
       setLid(entity);
@@ -99,9 +108,10 @@ export default function LeadDetailPage() {
     loadData();
   }, [loadData]);
 
+  // ─── Values dirty check ────────────────────────────────────────────────────
   const valuesDirty = useMemo(() => {
     return columnDefs.some(
-      (c) => (valueForm[c.id] ?? "") !== (savedSnapshot[c.id] ?? ""),
+      (c) => (valueForm[c.id] ?? "") !== (savedSnapshot[c.id] ?? "")
     );
   }, [columnDefs, valueForm, savedSnapshot]);
 
@@ -109,28 +119,44 @@ export default function LeadDetailPage() {
     setValueForm((prev) => ({ ...prev, [columnId]: next }));
   };
 
+  // ─── Save lid ──────────────────────────────────────────────────────────────
+  // Tartib:
+  //   1. apiLids.update  — fio, telefon, ota_ona_fio, values (child_status_id ham)
+  //   2. status o'zgansa — apiLids.updateStatus
+  //   3. child_status o'zgansa — apiLids.updateChildStatus (PUT /lids/{id}/child-status)
   const handleSaveLid = async ({
     fio,
     telefon_raqam,
     status_id,
     ota_ona_fio,
+    child_status_id,
   }) => {
     if (!lid?.id) return;
     setSavingLid(true);
     try {
       const values = buildLidValuesPayload(columnDefs, valueForm);
+
+      // 1. Asosiy lid ma'lumotlarini yangilash
       await apiLids.update(lid.id, {
         fio,
         telefon_raqam,
         ota_ona_fio,
+        child_status_id: child_status_id ?? null,
         values,
       });
 
+      // 2. Status o'zgangan bo'lsa — alohida status endpointiga
       const currentStatus = String(lid.status?.id || lid.status_id || "");
       const newStatus = String(status_id || "");
-
       if (newStatus && newStatus !== currentStatus) {
-        await apiLids.updateStatus(lid.id, newStatus);
+        await apiLids.updateStatus(lid.id, newStatus, child_status_id ?? null);
+      }
+
+      // 3. Child status o'zgangan bo'lsa — alohida child-status endpointiga
+      const currentChild = String(lid.child_status_id ?? "");
+      const newChild = String(child_status_id ?? "");
+      if (newChild !== currentChild) {
+        await apiLids.updateChildStatus(lid.id, child_status_id ?? null);
       }
 
       await loadData();
@@ -142,17 +168,21 @@ export default function LeadDetailPage() {
     }
   };
 
+  // ─── Save custom field values ──────────────────────────────────────────────
   const handleSaveValues = async () => {
     if (!lid?.id) return;
     setSavingValues(true);
     try {
       const values = buildLidValuesPayload(columnDefs, valueForm);
+
       await apiLids.update(lid.id, {
         fio: lid.fio,
         telefon_raqam: lid.telefon_raqam,
         ota_ona_fio: lid.ota_ona_fio,
+        child_status_id: lid.child_status_id ?? null,
         values,
       });
+
       await loadData();
       toastService.success("Maydonlar saqlandi");
     } catch (err) {
@@ -162,11 +192,9 @@ export default function LeadDetailPage() {
     }
   };
 
+  // ─── Render ────────────────────────────────────────────────────────────────
   const statusColor = lid?.status?.color || "#e91e63";
   const creatorName = lid?.created_by_name || lid?.creator?.full_name || "—";
-
-  const isPanel =
-    pathname.startsWith("/admin") || pathname.startsWith("/operator");
 
   return (
     <Box
@@ -208,6 +236,7 @@ export default function LeadDetailPage() {
           </LeadDetailSection>
         ) : (
           <VStack align="stretch" spacing={{ base: 4, md: 6 }} w="100%">
+            {/* ── Asosiy ma'lumotlar ── */}
             <LeadDetailSection
               title="Asosiy ma'lumotlar"
               subtitle="FIO, telefon va status"
@@ -255,6 +284,7 @@ export default function LeadDetailPage() {
               </SimpleGrid>
             </LeadDetailSection>
 
+            {/* ── Qo'shimcha maydonlar + Kolonkalar boshqaruvi ── */}
             <Grid
               templateColumns={{
                 base: "1fr",
@@ -276,7 +306,7 @@ export default function LeadDetailPage() {
                 />
               </GridItem>
 
-              {canManageColumns ? (
+              {canManageColumns && (
                 <GridItem minW={0} w="100%">
                   <Box position={{ base: "static", xl: "sticky" }} top={4}>
                     <LidColumnsManageSection
@@ -288,7 +318,7 @@ export default function LeadDetailPage() {
                     />
                   </Box>
                 </GridItem>
-              ) : null}
+              )}
             </Grid>
           </VStack>
         )}
@@ -297,6 +327,7 @@ export default function LeadDetailPage() {
   );
 }
 
+// ─── MetaRow helper ────────────────────────────────────────────────────────────
 function MetaRow({ icon, label, value }) {
   return (
     <HStack spacing={3} align="start" minW={0}>

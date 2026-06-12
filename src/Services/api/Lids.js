@@ -33,14 +33,22 @@ class apiLids {
   };
 
   static create = async (data) => {
-    const response = await $api.post("/lids", data, {
+    const lidData = { ...data };
+    if (!("child_status_id" in lidData) || lidData.child_status_id === undefined) {
+      lidData.child_status_id = null;
+    }
+    const response = await $api.post("/lids", lidData, {
       showSuccessToast: "Lid muvaffaqiyatli yaratildi",
     });
     return response;
   };
 
   static update = async (id, data) => {
-    const response = await $api.put(`/lids/${id}`, data);
+    const lidData = { ...data };
+    if (!("child_status_id" in lidData) || lidData.child_status_id === undefined) {
+      lidData.child_status_id = null;
+    }
+    const response = await $api.put(`/lids/${id}`, lidData);
     return response;
   };
 
@@ -51,10 +59,24 @@ class apiLids {
     return response;
   };
 
-  static updateStatus = async (id, statusId) => {
+  static updateStatus = async (id, statusId, childStatusId) => {
     const body = { status_id: statusId };
+    if (typeof childStatusId !== "undefined") {
+      body.child_status_id = childStatusId;
+    }
     return await $api.put(`/lids/${id}/status`, body, {
       showSuccessToast: "Status yangilandi",
+    });
+  };
+
+  /**
+   * Faqat child_status_id ni yangilash uchun alohida endpoint
+   * PUT /api/v1/lids/{id}/child-status
+   * Body: { child_status_id: string | null }
+   */
+  static updateChildStatus = async (id, childStatusId) => {
+    return await $api.put(`/lids/${id}/child-status`, {
+      child_status_id: childStatusId ?? null,
     });
   };
 
