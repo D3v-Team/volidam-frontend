@@ -7,19 +7,15 @@ import {
   useColorModeValue,
   Checkbox,
   Divider,
-  Badge,
 } from "@chakra-ui/react";
-
 import {
   Phone,
   Trash2,
   Clock,
-  User,
-  UsersRound,
   UsersIcon,
   ShieldUser,
 } from "lucide-react";
-import { LEAD_CARD_MIN_H_COMPACT, volidamDangerIconButton } from "./leadStyles";
+import { volidamDangerIconButton } from "./leadStyles";
 import { formatDateTime } from "../../utils/tools/formatDateTime";
 
 function getInitials(name) {
@@ -60,14 +56,12 @@ export default function LeadCard({
     year: "numeric",
   });
   const hasDate = createdLabel && createdLabel !== "-";
-
   const isChecked = selectedLeadIds?.includes(lid.id);
-
 
   return (
     <Box
-      px={5}
-      py={5}
+      px={4}
+      py={4}
       w="100%"
       minW={0}
       overflow="hidden"
@@ -107,14 +101,13 @@ export default function LeadCard({
           } else {
             setSelectedLeadIds((prev) => [...prev, lid.id]);
           }
-
           return;
         }
-
         onOpen(lid);
       }}
     >
-      <Flex justify="space-between" align="center" mb={4}>
+      {/* Header: FIO + delete */}
+      <Flex justify="space-between" align="center" mb={3}>
         {assignMode && (
           <Checkbox
             isChecked={isChecked}
@@ -130,7 +123,12 @@ export default function LeadCard({
             }}
           />
         )}
-        <Text fontWeight="800" fontSize="2xl" color="text" noOfLines={2}>
+        <Text
+          fontWeight="800"
+          fontSize="md"        // 2xl → md
+          color="text"
+          noOfLines={2}
+        >
           {title}
         </Text>
 
@@ -139,7 +137,7 @@ export default function LeadCard({
             {...volidamDangerIconButton}
             size="sm"
             aria-label="Lidni o'chirish"
-            icon={<Trash2 size={17} />}
+            icon={<Trash2 size={15} />}
             onClick={(e) => {
               e.stopPropagation();
               onDelete(lid);
@@ -149,34 +147,39 @@ export default function LeadCard({
         )}
       </Flex>
 
-      <Flex align="center" gap={2} mb={3}>
-        <Icon as={UsersIcon} boxSize={4} color={metaColor} />
-        <Text fontSize="md" fontWeight="600" color="text">
+      {/* Ota-ona */}
+      <Flex align="center" gap={2} mb={2}>
+        <Icon as={UsersIcon} boxSize={3.5} color={metaColor} />
+        <Text fontSize="xs" fontWeight="600" color="text" noOfLines={1}>   {/* md → xs */}
           {parents ? `Ota-ona: ${parents}` : "Ota-ona ma'lumoti mavjud emas"}
         </Text>
       </Flex>
 
-      <Flex align="center" gap={2} mb={4}>
-        <Icon as={Phone} boxSize={4} color={phoneColor} />
-        <Text fontSize="md" fontWeight="700" color="text">
+      {/* Telefon */}
+      <Flex align="center" gap={2} mb={3}>
+        <Icon as={Phone} boxSize={3.5} color={phoneColor} />
+        <Text fontSize="sm" fontWeight="700" color="text">   {/* md → sm */}
           {phone}
         </Text>
       </Flex>
 
-      <Divider mb={4} />
+      <Divider mb={3} />
 
+      {/* Footer: biriktirilgan + sana */}
       <Flex justify="space-between" align="center" mt="auto">
-        <Flex align="center" gap={2}>
-          <Icon as={ShieldUser} boxSize={4} color={metaColor} />
-          <Text fontSize="sm" fontWeight="700" color="text">
-            {assignee ? `Biriktirilgan: ${assignee}` : "Biriktirilgan shaxs mavjud emas"}
+        <Flex align="center" gap={1.5}>
+          <Icon as={ShieldUser} boxSize={3.5} color={metaColor} />
+          <Text fontSize="xs" fontWeight="600" color="text" noOfLines={1}>   {/* sm → xs */}
+            {assignee
+              ? `Biriktirilgan: ${assignee}`
+              : "Biriktirilgan shaxs mavjud emas"}
           </Text>
         </Flex>
 
         {hasDate && (
-          <Flex align="center" gap={2}>
-            <Icon as={Clock} boxSize={4} color={metaColor} />
-            <Text fontSize="sm" fontWeight="600" color={metaColor}>
+          <Flex align="center" gap={1.5}>
+            <Icon as={Clock} boxSize={3.5} color={metaColor} />
+            <Text fontSize="xs" fontWeight="600" color={metaColor}>   {/* sm → xs */}
               {createdLabel}
             </Text>
           </Flex>
@@ -185,4 +188,3 @@ export default function LeadCard({
     </Box>
   );
 }
-

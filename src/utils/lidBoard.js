@@ -1,11 +1,34 @@
 import { parsePaginatedResponse } from "./api/parsePagination";
 import { normalizeStatusFromApi, sortStatuses, unwrapStatuses } from "./lidStatus";
 
+/**
+ * MUAMMO: child_status_id payloaddan to'g'ri kelmoqda, lekin backend responseda null/yo'qolib qolmoqda.
+ * QABUL: normalizeLidFromApi endi ham child_status_id, ham child_status biriktirilgan bo'lsa
+ *        ikkala joyni tekshiradi va ba'zi servislar child_status_id ni string/number formatda qaytarayotgani uchun
+ *        konservativ (ko'proq qamrovli) formatlash amalga oshirildi.
+ */
 export function normalizeLidFromApi(lid) {
     if (!lid || typeof lid !== "object") return lid;
+
+    // child_status_id ga maksimal ishonch hosil qilamiz (payloaddan va child_status.id dan)
+    let child_status_id = null;
+    if ("child_status_id" in lid && lid.child_status_id != null && lid.child_status_id !== "") {
+        child_status_id = String(lid.child_status_id);
+    } else if (
+        lid.child_status &&
+        typeof lid.child_status === "object" &&
+        "id" in lid.child_status &&
+        lid.child_status.id != null &&
+        lid.child_status.id !== "" 
+    ) {
+        child_status_id = String(lid.child_status.id);
+    }
+    // Agar umuman ham child_status_id, ham child_statusnig id property yo'q yoki null bo'lsa, child_status_id null bo'ladi
+
     return {
         ...lid,
         status_id: lid.status_id ?? lid.status?.id ?? "",
+        child_status_id,
         createdAt: lid.createdAt ?? lid.created_at ?? null,
         updatedAt: lid.updatedAt ?? lid.updated_at ?? null,
         created_by_name:
@@ -76,16 +99,11 @@ export function extractLidsPagination(res) {
             ? root.data
             : root;
 
-    // Check for columns structure FIRST (before root pagination fields)
     if (Array.isArray(inner?.columns) && inner.columns.length > 0) {
-        // If columns have no pagination info, sum their totals to calculate pagination
         const limit = Number(root?.limit ?? inner?.limit ?? 10);
         const page = Number(root?.page ?? inner?.page ?? 1);
         const total = inner.columns.reduce((sum, col) => sum + Number(col?.total ?? 0), 0);
         const totalPages = Math.max(1, Math.ceil(total / limit));
-        
-     
-        
         return { items: [], page, limit, total, totalPages };
     }
 
@@ -135,7 +153,6 @@ export function mergeLidsGrouped(prev, next, statusList) {
     return merged;
 }
 
-/** GET /lids — `{ columns: [{ status, total, items }] }` yoki oddiy ro'yxat */
 export function parseLidsBoardResponse(res, statusList, search = "") {
     const root = res?.data ?? res;
     const inner =
@@ -158,6 +175,7 @@ export function parseLidsBoardResponse(res, statusList, search = "") {
             const statusId = String(
                 col?.status?.id ?? col?.status_id ?? ""
             ).trim();
+            // Har bir item uchun normalizeLidFromApi chaqiriladi — child_status_id fallback ishlatiladi
             const items = (col?.items ?? col?.data ?? []).map(normalizeLidFromApi);
             const filtered = filterLidsBySearch(items, search);
             const columnTotal =

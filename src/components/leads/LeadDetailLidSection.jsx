@@ -20,21 +20,16 @@ import {
   volidamPrimaryButton,
 } from "./leadStyles";
 
-function FieldCard({ children, ...rest }) {
-  const bg = useColorModeValue("rgba(255,255,255,0.8)", "whiteAlpha.50");
-  return (
-    <Box
-      p={4}
-      borderRadius="xl"
-      borderWidth="1px"
-      borderColor="border"
-      bg={bg}
-      {...rest}
-    >
-      {children}
-    </Box>
-  );
-}
+/**
+ * LeadDetailLidSection
+ *
+ * --- MUAMMO ---
+ * status va kun/vaqt (child status) tanlansa ham, child_status_id apiga uzatilmayapti.
+ * Clientdan child_status_id ni aniq jo'natish shart.
+ * Apiga {child_status_id: ...} bo'sh emas qiymat borishi kerak, tanlab kiritilsa.
+ *
+ * ✨ YANGILASH: child_status_id — faqat va faqat Vaqtlari (child) dagi IDlardan birini yuborishi shart!
+ */
 
 export default function LeadDetailLidSection({
   lid,
@@ -48,7 +43,26 @@ export default function LeadDetailLidSection({
   const [statusId, setStatusId] = useState("");
   const [parents, setParents] = useState("");
   const [selectedDay, setSelectedDay] = useState("");
-  const [selectedTime, setSelectedTime] = useState("");
+  const [selectedTime, setSelectedTime] = useState(""); // child_status_id
+
+  // --- NEW: statik qiymatlarni xotirada saqlash (hooklarni to'g'ri ishlashini ta'minlash uchun) ---
+  const selectedStatus = statuses.find(
+    (s) => String(s.id) === String(statusId)
+  );
+  const statusColor = selectedStatus?.color || lid?.status?.color || "#e91e63";
+  const dayTypes = Object.keys(selectedStatus?.child_statuses_by_type || {});
+  const timeOptions =
+    (selectedStatus?.child_statuses_by_type?.[selectedDay] || []);
+
+  // Yangi: All Vaqtlari (child statuses) IDlarini massivga to'plash
+  const allChildStatusIds = [];
+  if (selectedStatus && selectedStatus.child_statuses_by_type) {
+    Object.values(selectedStatus.child_statuses_by_type || {}).forEach(childsArr => {
+      childsArr.forEach(child => allChildStatusIds.push(String(child.id)));
+    });
+  }
+
+  const hasChildStatuses = allChildStatusIds.length > 0;
 
   useEffect(() => {
     if (!lid) return;
@@ -56,45 +70,95 @@ export default function LeadDetailLidSection({
     setTelefon(lid.telefon_raqam || "");
     setStatusId(String(lid.status?.id || lid.status_id || ""));
     setParents(lid.ota_ona_fio || "");
-  }, [lid]);
 
+    // child_status_id dan boshlang'ich qiymat
+    const childId = lid.child_status_id || "";
+
+    // faqat agar allChildStatusIds ichida bo'lsa, o'zlashtiramiz
+    // (bu, eski/yaroqsiz qiymatga ega bo'lsa, keyin reset qilamiz)
+    setSelectedTime(
+      childId && allChildStatusIds.includes(String(childId))
+        ? String(childId)
+        : ""
+    );
+
+    // Agar child_status_id bo'lsa — qaysi dayType ga tegishli ekanini topamiz
+    if (childId && allChildStatusIds.includes(String(childId))) {
+      const curr = statuses.find(
+        (s) => String(s.id) === String(lid.status?.id || lid.status_id)
+      );
+      if (curr?.child_statuses_by_type) {
+        let foundDay = "";
+        for (const [day, children] of Object.entries(
+          curr.child_statuses_by_type
+        )) {
+          if (children.some((c) => String(c.id) === String(childId))) {
+            foundDay = day;
+            break;
+          }
+        }
+        setSelectedDay(foundDay);
+      }
+    } else {
+      setSelectedDay("");
+    }
+  // eslint-disable-next-line
+  }, [lid, statuses]);
+
+  // FORM "dirty" holati tekshiruvi
   const dirty = useMemo(() => {
     if (!lid) return false;
     const baseStatus = String(lid.status?.id || lid.status_id || "");
+    // Faqat allChildStatusIds ichidagina child_status_idni tenglashtiramiz. Aks holda, bo'sh deb hisoblash kerak.
+    const baseChild = allChildStatusIds.includes(String(lid.child_status_id))
+      ? String(lid.child_status_id)
+      : "";
+
     return (
       fio !== (lid.fio || "") ||
       telefon !== (lid.telefon_raqam || "") ||
       statusId !== baseStatus ||
-      parents !== (lid.ota_ona_fio || "")
+      parents !== (lid.ota_ona_fio || "") ||
+      selectedTime !== baseChild
     );
-  }, [lid, fio, telefon, statusId, parents]);
+  // eslint-disable-next-line
+  }, [lid, fio, telefon, statusId, parents, selectedTime, allChildStatusIds.join(",")]);
 
-  const selectedStatus = statuses.find(
-    (s) => String(s.id) === String(statusId),
-  );
-  const statusColor = selectedStatus?.color || lid?.status?.color || "#e91e63";
-
-  const dayTypes = Object.keys(selectedStatus?.child_statuses_by_type || {});
-  const timeOptions =
-    selectedStatus?.child_statuses_by_type?.[selectedDay] || [];
-
-  const hasChildStatuses = Object.values(
-    selectedStatus?.child_statuses_by_type || {}
-  ).some((items) => items.length > 0);
-
+  // --- NEW: handleSubmit yangilandi ---
   const handleSubmit = () => {
+    // Faqat Vaqt options dagi value(child_status_id) laridan birini qabul qilish!
+    const validChildStatus =
+      hasChildStatuses && allChildStatusIds.includes(selectedTime)
+        ? selectedTime
+        : null;
+
     const data = {
       fio: fio.trim(),
       telefon_raqam: telefon.trim(),
       status_id: statusId,
       ota_ona_fio: parents.trim(),
+      child_status_id: validChildStatus,
     };
+
     onSave?.(data);
   };
 
   if (!lid) return null;
 
+  // ── Read-only ko'rinish ──
   if (!canEdit) {
+    // Vaqtni chiqarishda har doim status+daydan topilsin
+    let vaqtiName = "";
+    if (
+      selectedTime &&
+      selectedDay &&
+      Array.isArray(timeOptions) &&
+      allChildStatusIds.includes(selectedTime)
+    ) {
+      const found = timeOptions.find((t) => String(t.id) === String(selectedTime));
+      vaqtiName = found?.name || "";
+    }
+
     return (
       <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
         <Box>
@@ -112,7 +176,11 @@ export default function LeadDetailLidSection({
           <Text fontSize="xs" fontWeight="600" color="textSecondary" mb={1}>
             Ism Familiya
           </Text>
-          <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="800" color="text">
+          <Text
+            fontSize={{ base: "xl", md: "2xl" }}
+            fontWeight="800"
+            color="text"
+          >
             {fio || "Ism familiya ma'lumoti mavjud emas"}
           </Text>
         </Box>
@@ -131,20 +199,35 @@ export default function LeadDetailLidSection({
             Ota-ona
           </Text>
           <Text fontSize="md" fontWeight="600" color="textSecondary">
-            {parents ? `${parents}` : "Ota-ona ma'lumoti mavjud emas"}
+            {parents || "Ota-ona ma'lumoti mavjud emas"}
           </Text>
         </Box>
+
+        {/* Read-only: child status ko'rinishi */}
+        {selectedTime && vaqtiName && (
+          <Box>
+            <Text fontSize="xs" fontWeight="600" color="textSecondary" mb={1}>
+              Vaqti
+            </Text>
+            <Text fontSize="md" fontWeight="600" color="textSecondary">
+              {vaqtiName}
+            </Text>
+          </Box>
+        )}
       </SimpleGrid>
     );
   }
 
+  // ── Edit ko'rinish ──
   return (
     <Flex direction="column" gap={5}>
       <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
         <FormControl>
           <FormLabel {...volidamFormLabel}>Status</FormLabel>
           <Select
-            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSubmit();
+            }}
             {...filterFieldProps}
             value={statusId}
             onChange={(e) => {
@@ -169,7 +252,9 @@ export default function LeadDetailLidSection({
             value={parents || ""}
             onChange={(e) => setParents(e.target.value)}
             placeholder="Ota-ona ismi"
-            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSubmit();
+            }}
           />
         </FormControl>
 
@@ -180,7 +265,9 @@ export default function LeadDetailLidSection({
             value={fio}
             onChange={(e) => setFio(e.target.value)}
             placeholder="To'liq ism"
-            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSubmit();
+            }}
           />
         </FormControl>
 
@@ -191,11 +278,13 @@ export default function LeadDetailLidSection({
             value={telefon}
             onChange={(e) => setTelefon(e.target.value)}
             placeholder="+998 90 123 45 67"
-            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSubmit();
+            }}
           />
         </FormControl>
 
-        {/* ── Kun (toq/juft) toggle tugmalar ── */}
+        {/* --- Kun (toq/juft) + Vaqt tanlash --- */}
         {hasChildStatuses && (
           <>
             <Box>
@@ -213,7 +302,7 @@ export default function LeadDetailLidSection({
                     colorScheme={selectedDay === day ? "brand" : "gray"}
                     onClick={() => {
                       setSelectedDay((prev) => (prev === day ? "" : day));
-                      setSelectedTime("");
+                      setSelectedTime(""); // kun o'zgarganda vaqtni reset
                     }}
                   >
                     {day === "toq" ? "Toq" : "Juft"}
@@ -222,15 +311,16 @@ export default function LeadDetailLidSection({
               </HStack>
             </Box>
 
-            <Box>
-              <Text fontSize="sm" fontWeight="600" color="textSecondary" mb={1}>
-                Vaqtlari
-              </Text>
+            <FormControl>
+              <FormLabel {...volidamFormLabel}>Vaqtlari</FormLabel>
               <Select
                 {...filterFieldProps}
                 value={selectedTime}
                 onChange={(e) => setSelectedTime(e.target.value)}
                 isDisabled={!selectedDay}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSubmit();
+                }}
               >
                 <option value="">
                   {selectedDay ? "Vaqt tanlang" : "Avval kun tanlang"}
@@ -241,7 +331,7 @@ export default function LeadDetailLidSection({
                   </option>
                 ))}
               </Select>
-            </Box>
+            </FormControl>
           </>
         )}
       </SimpleGrid>
@@ -255,7 +345,12 @@ export default function LeadDetailLidSection({
         borderColor="border"
       >
         {dirty ? (
-          <Badge colorScheme="orange" variant="subtle" borderRadius="full" px={3}>
+          <Badge
+            colorScheme="orange"
+            variant="subtle"
+            borderRadius="full"
+            px={3}
+          >
             Saqlanmagan o&apos;zgarishlar
           </Badge>
         ) : (
