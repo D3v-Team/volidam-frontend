@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiLids } from "../Services/api/Lids";
 import { apiLidStatuses } from "../Services/api/LidStatuses";
 import { unwrapEntity } from "../utils/api/parsePagination";
@@ -8,6 +8,8 @@ import {
     parseLidsBoardResponse,
     parseStatusesResponse,
 } from "../utils/lidBoard";
+
+const PAGE_SIZE = 20;
 
 /**
  * useLeadsBoard hook manages pagination, filtering, and data merging for the Kanban board.
@@ -31,6 +33,7 @@ export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "",
     const fetchLock = useRef(0);
     const statusesRef = useRef([]);
     const loadingMoreRef = useRef(false);  // Track loading state to prevent duplicate requests
+    const stateRef = useRef({ loading: true, loadingMore: false, hasMore: false });
 
     useEffect(() => {
         statusesRef.current = statuses;
@@ -54,11 +57,12 @@ export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "",
             try {
                 const lidsParams = { 
                     page: pageNumber,
-                    limit: 10
+                    limit: PAGE_SIZE,
                 };
                 if (statusFilter) lidsParams.status_id = statusFilter;
                 if (assignedId) lidsParams.assigned_id = assignedId;
                 if (role) lidsParams.role = role;
+                if (search?.trim()) lidsParams.searchTerm = search.trim();
 
                 // Page 1: fetch both statuses and lids in parallel
                 // Subsequent pages: fetch lids only
@@ -82,12 +86,32 @@ export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "",
                 const { grouped, counts: countMap, pagination } = parseLidsBoardResponse(
                     lidsRes,
                     statusList,
-                    search
+                    search,
+                    PAGE_SIZE
                 );
 
-                // Calculate totalPages for hasMore logic
-                const calculatedTotalPages = Math.max(1, Number(pagination?.totalPages) || 1);
-                setTotalPages(calculatedTotalPages);
+                let calculatedTotalPages = Math.max(1, Number(pagination?.totalPages) || 1);
+                const maxColCount = Math.max(
+                    ...Object.values(grouped).map((arr) => arr?.length ?? 0),
+                    0
+                );
+                if (maxColCount >= PAGE_SIZE && calculatedTotalPages <= pageNumber) {
+                    calculatedTotalPages = pageNumber + 1;
+                }
+
+                if (append) {
+                    const incomingCount = Object.values(grouped).reduce(
+                        (sum, items) => sum + (items?.length ?? 0),
+                        0
+                    );
+                    if (incomingCount === 0) {
+                        setTotalPages(pageNumber);
+                    } else {
+                        setTotalPages(calculatedTotalPages);
+                    }
+                } else {
+                    setTotalPages(calculatedTotalPages);
+                }
                 
                 
                 
@@ -129,34 +153,25 @@ export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "",
         loadPage({ pageNumber: page, append: true });
     }, [page, loadPage]);
 
-    const hasMore = page < totalPages;
+    const hasMoreByCounts = useMemo(() => {
+        return statuses.some((s) => {
+            const loaded = lidsByStatus[s.id]?.length ?? 0;
+            const total = counts[s.id] ?? 0;
+            return total > 0 && loaded < total;
+        });
+    }, [statuses, lidsByStatus, counts]);
 
-    /**
-     * Increments page state to trigger next page fetch
-     * Strictly guards against multiple concurrent requests
-     */
+    const hasMore = page < totalPages || hasMoreByCounts;
+
+    useEffect(() => {
+        stateRef.current = { loading, loadingMore, hasMore, page, totalPages };
+    }, [loading, loadingMore, hasMore, page, totalPages]);
+
     const loadMore = useCallback(() => {
-        // CRITICAL: Check if already loading before doing ANYTHING
-        if (loadingMoreRef.current) {
-            console.log('[loadMore] Skipped: already loading');
-            return;
-        }
-        if (loading) {
-            console.log('[loadMore] Skipped: loading');
-            return;
-        }
-        if (!hasMore) {
-            console.log(`[loadMore] Skipped: no more pages (page=${page}, totalPages=${totalPages})`);
-            return;
-        }
-        if (page >= totalPages) {
-            console.log(`[loadMore] Skipped: page >= totalPages (${page} >= ${totalPages})`);
-            return;
-        }
-        
-        console.log(`[loadMore] Loading next page: ${page} -> ${page + 1}`);
+        const s = stateRef.current;
+        if (s.loadingMore || s.loading || !s.hasMore) return;
         setPage((p) => p + 1);
-    }, [hasMore, loading, totalPages, page]);
+    }, []);
 
     // ========== Other operations (move, create, update, delete) ==========
     

@@ -92,19 +92,90 @@ function getColumnPagination(column) {
     return { page, limit, total, totalPages };
 }
 
-export function extractLidsPagination(res) {
+function getColumnTotal(column) {
+    const colPag = getColumnPagination(column);
+    const raw =
+        colPag?.total ??
+        column?.total ??
+        column?.totalCount ??
+        column?.pagination?.totalCount;
+    return raw != null ? Number(raw) : null;
+}
+
+export function extractLidsPagination(res, requestLimit = 20) {
     const root = res?.data ?? res;
     const inner =
         root?.data != null && typeof root.data === "object" && !Array.isArray(root.data)
             ? root.data
             : root;
 
+    const limit = Number(
+        root?.limit ??
+            inner?.limit ??
+            root?.pageSize ??
+            inner?.pageSize ??
+            requestLimit
+    );
+    const page = Number(
+        root?.page ??
+            inner?.page ??
+            root?.currentPage ??
+            inner?.current_page ??
+            1
+    );
+
+    const rootTotalPages =
+        root?.totalPages ??
+        root?.total_pages ??
+        root?.total_page ??
+        inner?.totalPages ??
+        inner?.total_pages ??
+        inner?.total_page;
+
+    if (rootTotalPages != null) {
+        const rootTotal =
+            root?.total ??
+            root?.totalCount ??
+            inner?.total ??
+            inner?.totalCount ??
+            0;
+        return {
+            items: [],
+            page,
+            limit,
+            total: Number(rootTotal) || 0,
+            totalPages: Math.max(1, Number(rootTotalPages)),
+        };
+    }
+
     if (Array.isArray(inner?.columns) && inner.columns.length > 0) {
-        const limit = Number(root?.limit ?? inner?.limit ?? 10);
-        const page = Number(root?.page ?? inner?.page ?? 1);
-        const total = inner.columns.reduce((sum, col) => sum + Number(col?.total ?? 0), 0);
-        const totalPages = Math.max(1, Math.ceil(total / limit));
-        return { items: [], page, limit, total, totalPages };
+        let maxTotalPages = 1;
+        let total = 0;
+
+        for (const col of inner.columns) {
+            const colPag = getColumnPagination(col);
+            const colLimit = Number(colPag?.limit ?? limit) || limit;
+            const colTotal = getColumnTotal(col) ?? 0;
+            total += colTotal;
+
+            if (colPag?.totalPages != null) {
+                maxTotalPages = Math.max(maxTotalPages, Number(colPag.totalPages));
+            } else if (colTotal > 0) {
+                maxTotalPages = Math.max(maxTotalPages, Math.ceil(colTotal / colLimit));
+            }
+        }
+
+        if (total === 0) {
+            const maxItems = Math.max(
+                ...inner.columns.map((col) => (col?.items ?? col?.data ?? []).length),
+                0
+            );
+            if (maxItems >= limit) {
+                maxTotalPages = Math.max(maxTotalPages, page + 1);
+            }
+        }
+
+        return { items: [], page, limit, total, totalPages: maxTotalPages };
     }
 
     if (
@@ -153,14 +224,14 @@ export function mergeLidsGrouped(prev, next, statusList) {
     return merged;
 }
 
-export function parseLidsBoardResponse(res, statusList, search = "") {
+export function parseLidsBoardResponse(res, statusList, search = "", requestLimit = 20) {
     const root = res?.data ?? res;
     const inner =
         root?.data != null && typeof root.data === "object" && !Array.isArray(root.data)
             ? root.data
             : root;
     const columns = inner?.columns ?? root?.columns;
-    const pagination = extractLidsPagination(res);
+    const pagination = extractLidsPagination(res, requestLimit);
 
     if (Array.isArray(columns) && columns.length > 0) {
         const grouped = {};
@@ -178,16 +249,17 @@ export function parseLidsBoardResponse(res, statusList, search = "") {
             // Har bir item uchun normalizeLidFromApi chaqiriladi — child_status_id fallback ishlatiladi
             const items = (col?.items ?? col?.data ?? []).map(normalizeLidFromApi);
             const filtered = filterLidsBySearch(items, search);
-            const columnTotal =
-                col?.pagination?.total ??
-                col?.total ??
-                col?.pagination?.totalCount ??
-                col?.totalCount ??
-                filtered.length;
+            const columnTotal = getColumnTotal(col);
+            const resolvedTotal =
+                columnTotal != null
+                    ? columnTotal
+                    : filtered.length >= requestLimit
+                      ? filtered.length + 1
+                      : filtered.length;
 
             if (statusId) {
                 grouped[statusId] = filtered;
-                counts[statusId] = Number(columnTotal) >= 0 ? Number(columnTotal) : filtered.length;
+                counts[statusId] = Math.max(0, Number(resolvedTotal) || 0);
             }
         }
 

@@ -52,7 +52,10 @@ function ColumnHeaderActionsMenu({
         {showAddChild ? (
           <MenuItem
             icon={<Plus size={14} />}
-            onClick={(e) => { e.stopPropagation(); onAddChild?.(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddChild?.();
+            }}
             borderRadius="md"
             _hover={{ bg: menuHoverBg }}
           >
@@ -62,7 +65,10 @@ function ColumnHeaderActionsMenu({
         {showEdit ? (
           <MenuItem
             icon={<Pencil size={14} />}
-            onClick={(e) => { e.stopPropagation(); onEditColumn?.(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditColumn?.();
+            }}
             borderRadius="md"
             _hover={{ bg: menuHoverBg }}
           >
@@ -73,7 +79,10 @@ function ColumnHeaderActionsMenu({
           <MenuItem
             icon={<Trash2 size={14} />}
             color={dangerColor}
-            onClick={(e) => { e.stopPropagation(); onDeleteColumn?.(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteColumn?.();
+            }}
             borderRadius="md"
             _hover={{ bg: menuDangerHoverBg }}
           >
@@ -85,10 +94,6 @@ function ColumnHeaderActionsMenu({
   );
 }
 
-/**
- * Child chip — filter YO'Q holati uchun.
- * Rang yo'q, faqat nom + border. Sodda chip.
- */
 function ChildChipPlain({ child }) {
   const chipBg = useColorModeValue("whiteAlpha.300", "whiteAlpha.150");
   return (
@@ -121,10 +126,6 @@ function ChildChipPlain({ child }) {
   );
 }
 
-/**
- * Child card — filter BOR holati, "showChildren" mode uchun.
- * Rang bilan, 3-nuqta amallar (tahrirlash, o'chirish).
- */
 function ChildCardFull({ child, onEdit, onDelete, canManage }) {
   const menuHoverBg = useColorModeValue("gray.50", "whiteAlpha.100");
   const menuDangerHoverBg = useColorModeValue("red.50", "whiteAlpha.100");
@@ -185,7 +186,10 @@ function ChildCardFull({ child, onEdit, onDelete, canManage }) {
             <MenuList minW="160px" zIndex={20}>
               <MenuItem
                 icon={<Pencil size={13} />}
-                onClick={(e) => { e.stopPropagation(); onEdit?.(child); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit?.(child);
+                }}
                 borderRadius="md"
                 _hover={{ bg: menuHoverBg }}
               >
@@ -194,7 +198,10 @@ function ChildCardFull({ child, onEdit, onDelete, canManage }) {
               <MenuItem
                 icon={<Trash2 size={13} />}
                 color={dangerColor}
-                onClick={(e) => { e.stopPropagation(); onDelete?.(child); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete?.(child);
+                }}
                 borderRadius="md"
                 _hover={{ bg: menuDangerHoverBg }}
               >
@@ -228,12 +235,13 @@ export default function KanbanColumn({
   assignMode,
   selectedLeadIds,
   setSelectedLeadIds,
-  // isFiltered: filter orqali bitta status tanlangan (SharedLeadsPage dan keladi)
   isFiltered = false,
-  // showFilteredChildren: filter rejimda toolbar toggle holati (tashqaridan boshqariladi)
   showFilteredChildren = false,
+  // pagination props — SharedLeadsPage uchun saqlanadi, LeadsBoard ishlatmaydi
+  onLoadMore,
+  hasMore = false,
+  columnLoading = false,
 }) {
-  // Filter yo'q holda — ichki toggle; filter bor holda — tashqi prop
   const [showChildrenLocal, setShowChildrenLocal] = useState(false);
   const showChildren = isFiltered ? showFilteredChildren : showChildrenLocal;
 
@@ -243,27 +251,25 @@ export default function KanbanColumn({
   const activeBorder = useColorModeValue("brand.300", "brand.400");
   const emptyBorder = useColorModeValue("gray.200", "gray.600");
   const emptyText = useColorModeValue("gray.500", "gray.400");
-  const bannerActionHover = useColorModeValue("blackAlpha.100", "whiteAlpha.200");
+  const bannerActionHover = useColorModeValue(
+    "blackAlpha.100",
+    "whiteAlpha.200"
+  );
   const emptyInnerBg = useColorModeValue("white", "transparent");
   const chipsPanelBg = useColorModeValue("blackAlpha.100", "whiteAlpha.50");
 
   const accent = status?.color || "#378ADD";
   const displayCount = Number(count) > 0 ? count : lids.length;
   const isChild = Boolean(status?.isChild);
-  const hasChildren = Array.isArray(status?.children) && status.children.length > 0;
+  const hasChildren =
+    Array.isArray(status?.children) && status.children.length > 0;
 
   const canManage = canManageStatuses || canManageChildStatuses;
   const showAddChild = false;
   const showEdit = canManageChildStatuses ? isChild : canManageStatuses;
   const showDelete = canManageChildStatuses ? isChild : canManageStatuses;
 
-  // Category toggle tugmasi header ichida faqat filter YO'Q holda ko'rinadi
-  // (filter holida toolbar'dagi toggle ishlatiladi)
   const showCategoryToggleInHeader = hasChildren && !isFiltered;
-
-  // Filter holida showChildren = true bo'lsa → faqat child cardlar (rangli, amallar bilan)
-  // Filter holida showChildren = false → leads + header ichida rangsiz chiplar
-  // Filter yo'q → leads + header ichida rangsiz chiplar (showChildren toggle)
 
   return (
     <Box
@@ -283,7 +289,10 @@ export default function KanbanColumn({
       display="flex"
       flexDirection="column"
       transition="background 0.15s ease, border-color 0.15s ease"
-      onDragOver={(e) => { e.preventDefault(); onDragOver?.(status.id); }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        onDragOver?.(status.id);
+      }}
       onDragLeave={() => onDragLeave?.()}
       onDrop={(e) => {
         e.preventDefault();
@@ -327,7 +336,9 @@ export default function KanbanColumn({
                       ]);
                     } else {
                       setSelectedLeadIds((prev) =>
-                        prev.filter((id) => !lids.some((lid) => lid.id === id))
+                        prev.filter(
+                          (id) => !lids.some((lid) => lid.id === id)
+                        )
                       );
                     }
                   }}
@@ -364,7 +375,6 @@ export default function KanbanColumn({
 
           <GridItem justifySelf="end">
             <HStack spacing={1}>
-              {/* Category toggle — filter YO'Q holda header ichida */}
               {showCategoryToggleInHeader ? (
                 <Tooltip
                   label={showChildren ? "Yopish" : "Kategoriyalar"}
@@ -380,7 +390,10 @@ export default function KanbanColumn({
                     color="whiteAlpha.900"
                     bg={showChildren ? "whiteAlpha.400" : "transparent"}
                     _hover={{ bg: bannerActionHover }}
-                    onClick={(e) => { e.stopPropagation(); setShowChildrenLocal((v) => !v); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowChildrenLocal((v) => !v);
+                    }}
                   />
                 </Tooltip>
               ) : null}
@@ -400,7 +413,7 @@ export default function KanbanColumn({
           </GridItem>
         </Grid>
 
-        {/* ── Rangsiz chiplar paneli — category bosilganda yoki filter bo'lmasa ham ── */}
+        {/* ── Rangsiz chiplar paneli ── */}
         {hasChildren && showChildren && !(isFiltered && showChildren) ? (
           <Box
             mt={2.5}
@@ -421,14 +434,13 @@ export default function KanbanColumn({
         ) : null}
       </Box>
 
-      {/* ── Column body ── */}
+      {/* ── Column body — scroll YO'Q, page-level scroll ishlaydi ── */}
       <Box flex={1} minH={0}>
         {loading && lids.length === 0 ? (
           <Center py={10}>
             <Spinner size="md" color="gray.400" />
           </Center>
         ) : isFiltered && hasChildren && showChildren ? (
-          /* Filter + showChildren=true → child cardlar 4 tadan grid (rangli, amallar bilan) */
           <SimpleGrid columns={4} spacing={2}>
             {status.children.map((child) => (
               <ChildCardFull
@@ -436,10 +448,18 @@ export default function KanbanColumn({
                 child={child}
                 canManage={canManageChildStatuses}
                 onEdit={(c) =>
-                  onEditStatus?.({ ...c, isChild: true, childData: c.childData ?? c })
+                  onEditStatus?.({
+                    ...c,
+                    isChild: true,
+                    childData: c.childData ?? c,
+                  })
                 }
                 onDelete={(c) =>
-                  onDeleteStatus?.({ ...c, isChild: true, childData: c.childData ?? c })
+                  onDeleteStatus?.({
+                    ...c,
+                    isChild: true,
+                    childData: c.childData ?? c,
+                  })
                 }
               />
             ))}
@@ -476,6 +496,12 @@ export default function KanbanColumn({
                 setSelectedLeadIds={setSelectedLeadIds}
               />
             ))}
+            {/* SharedLeadsPage uchun per-column loading indikatori */}
+            {columnLoading && (
+              <Center py={3}>
+                <Spinner size="xs" color="gray.400" />
+              </Center>
+            )}
           </VStack>
         )}
       </Box>
