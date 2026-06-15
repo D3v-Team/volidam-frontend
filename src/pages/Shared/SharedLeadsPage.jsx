@@ -3,14 +3,13 @@ import {
   Button,
   Center,
   Flex,
-  HStack,
   Spinner,
   Stack,
   Text,
   useColorModeValue,
   useDisclosure,
 } from "@chakra-ui/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import LeadsFilters from "../../components/leads/LeadsFilters";
 import LeadsKanbanBoard from "../../components/leads/LeadsKanbanBoard";
@@ -43,23 +42,31 @@ export default function SharedLeadsPage({ dayType = DAY_TYPES.TOQ }) {
   const [filterUsersLoading, setFilterUsersLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Child CRUD state
   const [childFormMode, setChildFormMode] = useState("create");
   const [selectedChild, setSelectedChild] = useState(null);
   const [deleteChildTarget, setDeleteChildTarget] = useState(null);
 
   const childFormModal = useDisclosure();
+  const boardScrollRef = useRef(null);
+
+  // ── Sentinel — page-level scrollda ishlaydi ──
+  const sentinelRef = useRef(null);
 
   const debouncedSearch = useDebounce(search, 350);
   const debouncedAssignedId = useDebounce(assignedId, 350);
 
+  // NEW: De-structure according to instructions, fetch columnStates and fetchNextPageForColumn
   const {
     statuses,
     parentStatuses,
     lidsByStatus,
     counts,
+    columnStates,
     totalLids,
     loading,
+    fetchNextPageForColumn,
+    hasMore,
+    fetchNextPage,
     getDefaultStatusId,
     getParentStatus,
     getNextChildOrder,
@@ -75,7 +82,30 @@ export default function SharedLeadsPage({ dayType = DAY_TYPES.TOQ }) {
     role: roleFilter,
   });
 
-  // Parent statuslar yuklanganda role bo'yicha default statusni avtomatik tanlash
+  // ── IntersectionObserver — sentinel bu yerda, page scrolliga bog'liq ──
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          fetchNextPage();
+        }
+      },
+      {
+        // page-level scroll — root: null (viewport)
+        root: null,
+        rootMargin: "0px 0px 200px 0px",
+        threshold: 0,
+      }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fetchNextPage]);
+
+  // Parent statuslar yuklanganda default status
   useEffect(() => {
     if (!parentStatuses.length || statusFilter) return;
     const defaultId = getDefaultStatusId();
@@ -89,7 +119,6 @@ export default function SharedLeadsPage({ dayType = DAY_TYPES.TOQ }) {
 
   const subtleText = useColorModeValue("gray.600", "gray.400");
   const totalAccent = useColorModeValue("brand.600", "brand.300");
-  const panelBg = useColorModeValue("white", "whiteAlpha.50");
 
   const handleRoleChange = async (role) => {
     setRoleFilter(role);
@@ -107,7 +136,6 @@ export default function SharedLeadsPage({ dayType = DAY_TYPES.TOQ }) {
     }
   };
 
-  // Drag & Drop
   const handleDropLid = async (lidId, fromStatusId, toStatusId) => {
     if (fromStatusId === toStatusId) return;
     try {
@@ -117,14 +145,12 @@ export default function SharedLeadsPage({ dayType = DAY_TYPES.TOQ }) {
     }
   };
 
-  // Child yaratish modal ochish
   const handleOpenCreateChild = () => {
     setChildFormMode("create");
     setSelectedChild(null);
     childFormModal.onOpen();
   };
 
-  // Child tahrirlash
   const handleEditColumn = (column) => {
     if (!isSuperAdmin) return;
     setChildFormMode("edit");
@@ -132,13 +158,11 @@ export default function SharedLeadsPage({ dayType = DAY_TYPES.TOQ }) {
     childFormModal.onOpen();
   };
 
-  // Child o'chirish
   const handleDeleteColumn = (column) => {
     if (!isSuperAdmin) return;
     setDeleteChildTarget(column.childData || column);
   };
 
-  // Child form submit
   const handleChildSubmit = async (data) => {
     setActionLoading(true);
     try {
@@ -157,7 +181,6 @@ export default function SharedLeadsPage({ dayType = DAY_TYPES.TOQ }) {
     }
   };
 
-  // Child o'chirishni tasdiqlash
   const confirmDeleteChild = async () => {
     if (!deleteChildTarget?.id) return;
     setActionLoading(true);
@@ -192,7 +215,6 @@ export default function SharedLeadsPage({ dayType = DAY_TYPES.TOQ }) {
             gap={3}
             mb={3}
           >
-            {/* Jami lid soni */}
             <Text color={subtleText} fontSize="sm" fontWeight="600">
               JAMI:{" "}
               <Text as="span" color={totalAccent} fontWeight="800">
@@ -201,7 +223,6 @@ export default function SharedLeadsPage({ dayType = DAY_TYPES.TOQ }) {
               TA LID
             </Text>
 
-            {/* Super admin uchun child qo'shish tugmasi */}
             {isSuperAdmin && statusFilter && (
               <Button
                 {...volidamPrimaryButton}
@@ -209,7 +230,7 @@ export default function SharedLeadsPage({ dayType = DAY_TYPES.TOQ }) {
                 onClick={handleOpenCreateChild}
                 isDisabled={!selectedParentStatus}
               >
-                Child qo'shish
+                Child qo&apos;shish
               </Button>
             )}
           </Flex>
@@ -248,29 +269,56 @@ export default function SharedLeadsPage({ dayType = DAY_TYPES.TOQ }) {
             </Text>
           ) : (
             <LeadsKanbanBoard
+              boardScrollRef={boardScrollRef}
               statuses={statuses}
               lidsByStatus={lidsByStatus}
               counts={counts}
               loading={loading}
               canManageStatuses={false}
-              canManageChildStatuses={isSuperAdmin} // super_admin uchun 3 nuqta
+              canManageChildStatuses={isSuperAdmin}
               maxVisibleColumns={4}
               onDropLid={handleDropLid}
               onOpenLid={() => undefined}
               onDeleteLid={undefined}
               onEditStatus={handleEditColumn}
               onDeleteStatus={handleDeleteColumn}
+              onPersistScroll={undefined}
               isFiltered={false}
               showFilteredChildren={false}
               assignMode={false}
               selectedLeadIds={[]}
               setSelectedLeadIds={() => undefined}
+              // NEW: Add columnStates and onLoadMore as per instructions
+              columnStates={columnStates}
+              onLoadMore={fetchNextPageForColumn}
             />
           )}
         </Box>
+
+        {/* ── Sentinel — board TASHQARISIDA, page-level scrollda ──
+             hasMore=true bo'lganda ko'rinadi, observer trigger qiladi.
+             loading indikatori ham shu yerda. ── */}
+        {hasMore && (
+          <Box ref={sentinelRef} w="full" py={6}>
+            {loading && (
+              <Center gap={3}>
+                <Spinner size="sm" color="gray.400" />
+                <Text fontSize="sm" color="gray.400">
+                  Yuklanmoqda...
+                </Text>
+              </Center>
+            )}
+          </Box>
+        )}
+
+        {/* Hammasi yuklanganda xabar */}
+        {!hasMore && statuses.length > 0 && !loading && (
+          <Text fontSize="xs" color="gray.400" textAlign="center" pb={4}>
+            Barcha lidlar ko&apos;rsatildi
+          </Text>
+        )}
       </Stack>
 
-      {/* Child yaratish/tahrirlash modali */}
       <LidChildStatusFormModal
         isOpen={childFormModal.isOpen}
         onClose={childFormModal.onClose}
@@ -287,7 +335,6 @@ export default function SharedLeadsPage({ dayType = DAY_TYPES.TOQ }) {
         }
       />
 
-      {/* O'chirish tasdiqlash modali */}
       <ConfirmDelModal
         isOpen={Boolean(deleteChildTarget)}
         onClose={() => !actionLoading && setDeleteChildTarget(null)}

@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Flex, IconButton } from "@chakra-ui/react";
 import { ChevronRight } from "lucide-react";
 import KanbanColumn from "./KanbanColumn";
 import { leadsKanbanColumnLayout } from "./leadStyles";
 
+// New: Sentinel for infinite scroll on board
 export default function LeadsKanbanBoard({
   boardScrollRef,
-  sentinelRef,
   statuses,
   lidsByStatus,
   counts,
@@ -30,9 +30,18 @@ export default function LeadsKanbanBoard({
   assignMode,
   selectedLeadIds,
   setSelectedLeadIds,
+  // --- New props for per column data ---
+  columnStates = {},
+  onLoadMore,
+  // New props for board-level pagination:
+  boardHasMore,
+  boardLoading,
+  onBoardLoadMore
 }) {
   const useHorizontalScroll = statuses.length > maxVisibleColumns;
   const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const sentinelRef = useRef(null);
 
   const syncScrollMeta = useCallback(() => {
     const el = boardScrollRef?.current;
@@ -49,10 +58,35 @@ export default function LeadsKanbanBoard({
     syncScrollMeta();
   }, [statuses.length, maxVisibleColumns, syncScrollMeta]);
 
+  // Infinite scroll for page-level (when user reaches board bottom)
+  useEffect(() => {
+    // If handler or ref missing, skip
+    if (!onBoardLoadMore || !sentinelRef.current) return;
+
+    const el = sentinelRef.current;
+
+    // If nothing to load (hasMore false), do not trigger
+    if (!boardHasMore) return;
+
+    const observer = new window.IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && boardHasMore && !boardLoading) {
+          onBoardLoadMore();
+        }
+      },
+      { root: null, rootMargin: "0px 0px 200px 0px", threshold: 0 }
+    );
+
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, [boardHasMore, boardLoading, onBoardLoadMore]);
+
   const colLayout = leadsKanbanColumnLayout(useHorizontalScroll);
 
   return (
-    <Box position="relative" w="100%" maxW="100%" minW={0} overflow="hidden">
+    <Box position="relative" w="100%" maxW="100%" minW={0}>
+      {/* ── O'ngga scroll tugmasi ── */}
       {useHorizontalScroll && canScrollRight ? (
         <IconButton
           aria-label="O'ngga scroll"
@@ -72,10 +106,11 @@ export default function LeadsKanbanBoard({
         />
       ) : null}
 
+      {/* ── Faqat gorizontal scroll — vertikal BLOKLANMAYDI ── */}
       <Box
         ref={boardScrollRef}
         overflowX={useHorizontalScroll ? "auto" : "hidden"}
-        overflowY="hidden"
+        // overflowY="hidden" — OLIB TASHLANDI, sentinel ko'rinishi uchun
         pb={2}
         w="100%"
         maxW="100%"
@@ -136,11 +171,31 @@ export default function LeadsKanbanBoard({
               assignMode={assignMode}
               selectedLeadIds={selectedLeadIds}
               setSelectedLeadIds={setSelectedLeadIds}
+              hasMore={columnStates[status.id]?.hasMore ?? false}
+              columnLoading={columnStates[status.id]?.loading ?? false}
+              onLoadMore={() => onLoadMore?.(status.id)}
             />
           ))}
         </Flex>
+        {/* Sentinel at the end for board-level/infinite pagination */}
+        {boardHasMore && (
+          <div
+            ref={sentinelRef}
+            style={{
+              width: "100%",
+              height: 32,
+              // Optionally show spinner
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {boardLoading && (
+              <span style={{ color: "#888", fontSize: 14 }}>Yuklanmoqda...</span>
+            )}
+          </div>
+        )}
       </Box>
-      <Box ref={sentinelRef} h="40px" w="full" />
     </Box>
   );
 }
