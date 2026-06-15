@@ -271,8 +271,22 @@ export function parseLidsBoardResponse(res, statusList, search = "", requestLimi
     allLids = filterLidsBySearch(allLids, search);
     const grouped = groupLidsByStatus(allLids, statusList);
     const counts = {};
+
+    // API total (filter qilingan umumiy son) ni statuslarga nisbatan taqsimlash
+    // Agar bitta status bo'lsa — to'liq totalga ishonish mumkin
+    // Bir nechta status bo'lsa — har bir statusda yuklangan items sonini ishlatamiz,
+    // lekin pagination.total mavjud va yagona status bo'lsa uni ishlatamiz
+    const apiTotal = pagination?.total ?? 0;
+    const activeStatuses = statusList.filter(s => (grouped[s.id]?.length ?? 0) > 0);
+
     statusList.forEach((s) => {
-        counts[s.id] = grouped[s.id]?.length ?? 0;
+        const loadedCount = grouped[s.id]?.length ?? 0;
+        if (activeStatuses.length === 1 && activeStatuses[0]?.id === s.id && apiTotal > 0) {
+            // Faqat bitta statusda natijalar bor — API totaliga ishon
+            counts[s.id] = apiTotal;
+        } else {
+            counts[s.id] = loadedCount;
+        }
     });
 
     return { grouped, counts, allLids, pagination };

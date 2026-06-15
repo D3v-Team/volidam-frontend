@@ -35,6 +35,7 @@ export function useLeadsBoard({
     const [statuses, setStatuses] = useState([]);
     const [lidsByStatus, setLidsByStatus] = useState({});
     const [counts, setCounts] = useState({});
+    const [paginationTotal, setPaginationTotal] = useState(0);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [moving, setMoving] = useState(false);
@@ -125,6 +126,10 @@ export function useLeadsBoard({
                     }
                 } else {
                     setTotalPages(calculatedTotalPages);
+                    // Birinchi pageda API total ni saqlash (filter holatida to'g'ri total)
+                    if (pagination?.total > 0) {
+                        setPaginationTotal(Number(pagination.total));
+                    }
                 }
 
                 setCounts((prev) => (append ? { ...prev, ...countMap } : countMap));
@@ -166,6 +171,7 @@ export function useLeadsBoard({
         restoredSigRef.current = "";
         skipPageEffectFetchRef.current = false;
         restoreInProgressRef.current = false;
+        setPaginationTotal(0);
         loadPage({ pageNumber: 1, append: false });
     }, [search, statusFilter, assignedId, loadPage, role, filterSig, sessionKey]);
 
@@ -348,7 +354,9 @@ export function useLeadsBoard({
         await refreshBoard();
     };
 
-    const totalLids = Object.values(counts).reduce((a, b) => a + (Number(b) || 0), 0);
+    const totalLids = paginationTotal > 0
+        ? paginationTotal
+        : Object.values(counts).reduce((a, b) => a + (Number(b) || 0), 0);
 
     const visibleStatuses = statusFilter
         ? statuses.filter((s) => s.id === statusFilter)
