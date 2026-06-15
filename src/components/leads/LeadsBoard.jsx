@@ -9,7 +9,7 @@ import {
   useDisclosure,
   useColorModeValue,
 } from "@chakra-ui/react";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Plus, ListPlus } from "lucide-react";
 import { getLeadDetailPath, getLeadsBasePath } from "../../utils/leadsPaths";
@@ -42,8 +42,7 @@ export default function LeadsBoard({
   const leadsBasePath = getLeadsBasePath(pathname);
 
   const SESSION_KEY = `leadsFilters_${scrollRoleScope}`;
-
-  const getSession = () => {
+  const getFilterSession = () => {
     try {
       return JSON.parse(sessionStorage.getItem(SESSION_KEY)) || {};
     } catch {
@@ -51,36 +50,45 @@ export default function LeadsBoard({
     }
   };
 
-  const [search, setSearch] = useState(() => getSession().search || "");
+  // Filter state'lar
+  const [search, setSearch] = useState(() => getFilterSession().search || "");
   const [filterRole, setFilterRole] = useState(
-    () => getSession().filterRole || ""
+    () => getFilterSession().filterRole || ""
   );
   const [filterAssignedId, setFilterAssignedId] = useState(
-    () => getSession().filterAssignedId || ""
+    () => getFilterSession().filterAssignedId || ""
   );
   const [filterUsers, setFilterUsers] = useState([]);
   const [filterUsersLoading, setFilterUsersLoading] = useState(false);
 
+  // Debounced values
   const debouncedSearch = useDebounce(search, 350);
   const debouncedAssignedId = useDebounce(filterAssignedId, 350);
 
+  // Assign mode state'lari
   const [assignMode, setAssignMode] = useState(false);
   const [selectedLeadIds, setSelectedLeadIds] = useState([]);
 
-  // Drag scroll uchun
+  // Drag scroll uchun ref'lar
   const dragScrollRafRef = useRef(null);
   const dragScrollPointerRef = useRef({ x: 0, y: 0 });
   const dragScrollActiveRef = useRef(false);
 
+  // Role o'zgarganda user'larni yuklash
   useEffect(() => {
-    if (!filterRole) return;
+    if (!filterRole) {
+      setFilterUsers([]);
+      setFilterAssignedId("");
+      return;
+    }
     setFilterUsersLoading(true);
+    setFilterAssignedId("");
     apiUsers
       .getUsers(filterRole)
       .then((res) => setFilterUsers(res.data?.data ?? res.data ?? []))
       .catch(() => setFilterUsers([]))
       .finally(() => setFilterUsersLoading(false));
-  }, []);
+  }, [filterRole]);
 
   useEffect(() => {
     try {
@@ -89,8 +97,9 @@ export default function LeadsBoard({
         JSON.stringify({ search, filterRole, filterAssignedId })
       );
     } catch {}
-  }, [search, filterRole, filterAssignedId]);
+  }, [search, filterRole, filterAssignedId, SESSION_KEY]);
 
+  // useLeadsBoard hook - ma'lumotlarni boshqarish
   const {
     statuses,
     allStatuses,
@@ -109,35 +118,36 @@ export default function LeadsBoard({
     createStatus,
     updateStatus,
     deleteStatus,
+    sessionHydrated,
+    restoringPages,
+    restoreInProgressRef,
+    filterSig,
   } = useLeadsBoard({
     search: debouncedSearch,
     assignedId: debouncedAssignedId,
     role: filterRole,
+    roleScope: scrollRoleScope,
   });
 
-  const handleFilterRoleChange = async (role) => {
-    setFilterRole(role);
-    setFilterAssignedId("");
-    setFilterUsers([]);
-    if (!role) return;
-    setFilterUsersLoading(true);
-    try {
-      const res = await apiUsers.getUsers(role);
-      setFilterUsers(res.data?.data ?? res.data ?? []);
-    } catch {
-      setFilterUsers([]);
-    } finally {
-      setFilterUsersLoading(false);
-    }
-  };
-
+  // useLeadsBoardScroll hook - scroll va pagination session
   const scroll = useLeadsBoardScroll({
     roleScope: scrollRoleScope,
     statusFilter: "",
     search: debouncedSearch,
-    ready: !loading && allStatuses.length > 0,
+    assignedId: debouncedAssignedId,
+    role: filterRole,
+    page,
+    filterSig,
+    sessionHydrated,
+    restoreInProgressRef,
+    ready:
+      !loading &&
+      !restoringPages &&
+      allStatuses.length > 0 &&
+      sessionHydrated,
   });
 
+  // Drag/Status state'lari
   const [dragOverStatusId, setDragOverStatusId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [statusFormMode, setStatusFormMode] = useState("create");
@@ -145,31 +155,35 @@ export default function LeadsBoard({
   const [deleteLidTarget, setDeleteLidTarget] = useState(null);
   const [deleteStatusTarget, setDeleteStatusTarget] = useState(null);
 
+  // Modal disclosure'lar
   const createModal = useDisclosure();
   const statusFormModal = useDisclosure();
 
+  // Ranglar
   const subtleText = useColorModeValue("gray.600", "gray.400");
   const totalAccent = useColorModeValue("brand.600", "brand.300");
 
+  // Keyingi status order'ini hisoblash
   const nextStatusOrder = useMemo(() => {
     if (!allStatuses.length) return 0;
     return Math.max(...allStatuses.map((s) => s.order ?? 0)) + 1;
   }, [allStatuses]);
 
-  // ── loadingMore ref — closure stale bo'lmasligi uchun ──
+  // loadingMore ref - closure stale bo'lmasligi uchun
   const loadingMoreRef = useRef(false);
   useEffect(() => {
     loadingMoreRef.current = loadingMore;
   }, [loadingMore]);
 
+  // loadMore ref - closure stale bo'lmasligi uchun
   const loadMoreRef = useRef(loadMore);
   useEffect(() => {
     loadMoreRef.current = loadMore;
   }, [loadMore]);
 
-  // ── Pagination: sentinel ko‘ringanda (scroll oxirida) keyingi sahifa ──
+  // Sentinel orqali infinite scroll
   useEffect(() => {
-    if (loading || !hasMore) return;
+    if (loading || !hasMore || !sessionHydrated || restoringPages || scroll.scrollRestoring) return;
 
     const sentinel = scroll.sentinelRef.current;
     const rootEl = scroll.mainScrollRef.current;
@@ -182,16 +196,27 @@ export default function LeadsBoard({
       (entries) => {
         if (!entries[0]?.isIntersecting) return;
         if (loadingMoreRef.current) return;
+        if (restoreInProgressRef.current) return;
         loadMoreRef.current();
       },
-      { root: scrollRoot, rootMargin: "0px", threshold: 0 }
+      { root: scrollRoot, rootMargin: "200px", threshold: 0 }
     );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [loading, hasMore, allStatuses.length, scroll.mainScrollRef, scroll.sentinelRef]);
+  }, [
+    loading,
+    hasMore,
+    sessionHydrated,
+    allStatuses.length,
+    restoringPages,
+    scroll.scrollRestoring,
+    scroll.mainScrollRef,
+    scroll.sentinelRef,
+    restoreInProgressRef,
+  ]);
 
-  // ── Drag scroll ──
+  // ── Drag scroll (sichqonchani chetga olib borganda avtomatik scroll) ──
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -211,6 +236,7 @@ export default function LeadsBoard({
     const tick = () => {
       const { x, y } = dragScrollPointerRef.current;
 
+      // Gorizontal scroll (boardScrollRef)
       const hEl = scroll.boardScrollRef?.current;
       if (hEl && hEl.scrollWidth > hEl.clientWidth + 1) {
         const r = hEl.getBoundingClientRect();
@@ -220,6 +246,7 @@ export default function LeadsBoard({
         else if (dl < EDGE) hEl.scrollLeft -= speedFor(dl);
       }
 
+      // Vertikal scroll (mainScrollRef)
       const vEl = scroll.mainScrollRef?.current;
       if (vEl && vEl.scrollHeight > vEl.clientHeight + 1) {
         const r = vEl.getBoundingClientRect();
@@ -228,6 +255,7 @@ export default function LeadsBoard({
         if (db < EDGE) vEl.scrollTop += speedFor(db);
         else if (dt < EDGE) vEl.scrollTop -= speedFor(dt);
       } else {
+        // Agar mainScrollRef bo'lmasa, window scroll
         const vh = window.innerHeight;
         if (vh - y < EDGE) window.scrollBy(0, speedFor(vh - y));
         else if (y < EDGE) window.scrollBy(0, -speedFor(y));
@@ -259,37 +287,50 @@ export default function LeadsBoard({
       window.removeEventListener("dragend", stop);
       window.removeEventListener("drop", stop);
     };
-  }, [scroll]);
+  }, [scroll.boardScrollRef, scroll.mainScrollRef]);
 
-  const openCreateStatus = () => {
+  // ── Handler'lar ──
+
+  const handleFilterRoleChange = useCallback((role) => {
+    setFilterRole(role);
+  }, []);
+
+  const openCreateStatus = useCallback(() => {
     setStatusFormMode("create");
     setSelectedStatus(null);
     statusFormModal.onOpen();
-  };
+  }, [statusFormModal]);
 
-  const handleDrop = async (lidId, fromStatusId, toStatusId) => {
-    setDragOverStatusId(null);
-    try {
-      await moveLid(lidId, fromStatusId, toStatusId);
-    } catch {
-      toastService.error("Status o'zgartirilmadi");
-    }
-  };
+  const handleDrop = useCallback(
+    async (lidId, fromStatusId, toStatusId) => {
+      setDragOverStatusId(null);
+      try {
+        await moveLid(lidId, fromStatusId, toStatusId);
+      } catch {
+        toastService.error("Status o'zgartirilmadi");
+      }
+    },
+    [moveLid]
+  );
 
-  const handleCreateLid = async (data) => {
-    setActionLoading(true);
-    try {
-      await createLid(data);
-      createModal.onClose();
-    } catch (err) {
-      toastService.error(getApiErrorMessage(err) || "Lid yaratilmadi");
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  const handleCreateLid = useCallback(
+    async (data) => {
+      setActionLoading(true);
+      try {
+        await createLid(data);
+        createModal.onClose();
+      } catch (err) {
+        toastService.error(getApiErrorMessage(err) || "Lid yaratilmadi");
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [createLid, createModal]
+  );
 
-  const requestDeleteLid = (lid) => setDeleteLidTarget(lid);
-  const confirmDeleteLid = async () => {
+  const requestDeleteLid = useCallback((lid) => setDeleteLidTarget(lid), []);
+
+  const confirmDeleteLid = useCallback(async () => {
     if (!deleteLidTarget?.id) return;
     setActionLoading(true);
     try {
@@ -300,27 +341,31 @@ export default function LeadsBoard({
     } finally {
       setActionLoading(false);
     }
-  };
+  }, [deleteLidTarget, deleteLid]);
 
-  const handleStatusSubmit = async (data) => {
-    setActionLoading(true);
-    try {
-      if (statusFormMode === "create") {
-        await createStatus(data);
-        toastService.success("Status yaratildi");
-      } else {
-        await updateStatus(selectedStatus.id, data);
+  const handleStatusSubmit = useCallback(
+    async (data) => {
+      setActionLoading(true);
+      try {
+        if (statusFormMode === "create") {
+          await createStatus(data);
+          toastService.success("Status yaratildi");
+        } else {
+          await updateStatus(selectedStatus.id, data);
+        }
+        statusFormModal.onClose();
+      } catch (err) {
+        toastService.error(getApiErrorMessage(err) || "Status saqlanmadi");
+      } finally {
+        setActionLoading(false);
       }
-      statusFormModal.onClose();
-    } catch (err) {
-      toastService.error(getApiErrorMessage(err) || "Status saqlanmadi");
-    } finally {
-      setActionLoading(false);
-    }
-  };
+    },
+    [statusFormMode, selectedStatus, createStatus, updateStatus, statusFormModal]
+  );
 
-  const requestDeleteStatus = (status) => setDeleteStatusTarget(status);
-  const confirmDeleteStatus = async () => {
+  const requestDeleteStatus = useCallback((status) => setDeleteStatusTarget(status), []);
+
+  const confirmDeleteStatus = useCallback(async () => {
     if (!deleteStatusTarget?.id) return;
     setActionLoading(true);
     try {
@@ -331,12 +376,40 @@ export default function LeadsBoard({
     } finally {
       setActionLoading(false);
     }
-  };
+  }, [deleteStatusTarget, deleteStatus]);
 
-  const handleAssignLeads = async (payload) => {
-    await apiLids.assign(payload);
-    await refreshBoard();
-  };
+  const handleAssignLeads = useCallback(
+    async (payload) => {
+      try {
+        await apiLids.assign(payload);
+        await refreshBoard();
+        setAssignMode(false);
+        setSelectedLeadIds([]);
+      } catch (err) {
+        toastService.error(getApiErrorMessage(err) || "Tayinlanmadi");
+      }
+    },
+    [refreshBoard]
+  );
+
+  const handleOpenLid = useCallback(
+    (lid) => {
+      scroll.persistNow(lid?.id);
+      navigate(getLeadDetailPath(leadsBasePath, lid.id));
+    },
+    [navigate, leadsBasePath, scroll.persistNow]
+  );
+
+  const handleEditStatus = useCallback(
+    (s) => {
+      setStatusFormMode("edit");
+      setSelectedStatus(s);
+      statusFormModal.onOpen();
+    },
+    [statusFormModal]
+  );
+
+  // ── UI qismlar ──
 
   const toolbar = (
     <Flex
@@ -393,8 +466,12 @@ export default function LeadsBoard({
     </Flex>
   );
 
+  const boardLoading =
+    loading || restoringPages || scroll.scrollRestoring;
+
   const boardContent = (
     <>
+      {/* Filterlar */}
       <LeadsFilters
         hideStatusFilter
         statuses={allStatuses}
@@ -416,15 +493,37 @@ export default function LeadsBoard({
       />
 
       {loading && allStatuses.length === 0 ? (
-        <Flex justify="center" py={20}>
+        <Flex justify="center" align="center" direction="column" py={20} gap={3}>
           <Spinner size="lg" color="brand.500" thickness="3px" />
+          <Text color={subtleText} fontSize="sm" fontWeight="500">
+            Ma&apos;lumotlar yuklanmoqda...
+          </Text>
         </Flex>
       ) : statuses.length === 0 ? (
         <Text color="gray.500" textAlign="center" py={12}>
           Statuslar topilmadi
         </Text>
       ) : (
-        <>
+        <Box position="relative">
+          {boardLoading && (
+            <Flex
+              position="absolute"
+              inset={0}
+              zIndex={10}
+              minH="320px"
+              justify="center"
+              align="center"
+              direction="column"
+              gap={3}
+              bg="bg"
+            >
+              <Spinner size="lg" color="brand.500" thickness="3px" />
+              <Text color={subtleText} fontSize="sm" fontWeight="500">
+                Ma&apos;lumotlar yuklanmoqda...
+              </Text>
+            </Flex>
+          )}
+
           <LeadsKanbanBoard
             boardScrollRef={scroll.boardScrollRef}
             statuses={statuses}
@@ -437,15 +536,9 @@ export default function LeadsBoard({
             onDragOverStatusId={setDragOverStatusId}
             onDragLeaveStatus={() => setDragOverStatusId(null)}
             onDropLid={handleDrop}
-            onOpenLid={(lid) =>
-              navigate(getLeadDetailPath(leadsBasePath, lid.id))
-            }
+            onOpenLid={handleOpenLid}
             onDeleteLid={canDeleteLid ? requestDeleteLid : undefined}
-            onEditStatus={(s) => {
-              setStatusFormMode("edit");
-              setSelectedStatus(s);
-              statusFormModal.onOpen();
-            }}
+            onEditStatus={handleEditStatus}
             onDeleteStatus={requestDeleteStatus}
             onPersistScroll={scroll.schedulePersistScroll}
             assignMode={assignMode}
@@ -453,15 +546,16 @@ export default function LeadsBoard({
             setSelectedLeadIds={setSelectedLeadIds}
           />
 
-          {/*
-            ── Sentinel ──
-            scroll.sentinelRef — useLeadsBoardScroll hook dan keladi.
-            Board dan keyin, mainScrollRef ichida joylashgan.
-            Foydalanuvchi pastga scroll qilib shu elementga yetganda
-            IntersectionObserver trigger bo'ladi va loadMore() chaqiriladi.
-          */}
-          <Box ref={scroll.sentinelRef} w="full" h="40px" mt={4} aria-hidden="true" />
+          {/* Sentinel - infinite scroll trigger */}
+          <Box
+            ref={scroll.sentinelRef}
+            w="full"
+            h="40px"
+            mt={4}
+            aria-hidden="true"
+          />
 
+          {/* Ko'proq yuklanmoqda */}
           {loadingMore && (
             <Center py={6}>
               <HStack spacing={2} color={subtleText}>
@@ -471,18 +565,20 @@ export default function LeadsBoard({
             </Center>
           )}
 
+          {/* Hammasi ko'rsatilgan */}
           {!hasMore && !loading && statuses.length > 0 && (
             <Text fontSize="xs" color="gray.400" textAlign="center" py={4}>
               Barcha lidlar ko&apos;rsatildi
             </Text>
           )}
-        </>
+        </Box>
       )}
     </>
   );
 
   const modals = (
     <>
+      {/* Lid yaratish modal */}
       <LeadFormModal
         isOpen={createModal.isOpen}
         onClose={createModal.onClose}
@@ -490,6 +586,8 @@ export default function LeadsBoard({
         loading={actionLoading}
         mode="create"
       />
+
+      {/* Lid o'chirish modal */}
       {canDeleteLid && (
         <ConfirmDelModal
           isOpen={Boolean(deleteLidTarget)}
@@ -500,6 +598,8 @@ export default function LeadsBoard({
           typeItem="lid"
         />
       )}
+
+      {/* Status o'chirish modal */}
       <ConfirmDelModal
         isOpen={Boolean(deleteStatusTarget)}
         onClose={() => !actionLoading && setDeleteStatusTarget(null)}
@@ -508,6 +608,8 @@ export default function LeadsBoard({
         loading={actionLoading}
         typeItem="status"
       />
+
+      {/* Status yaratish/tahrirlash modal */}
       {canManageStatuses && (
         <LidStatusFormModal
           isOpen={statusFormModal.isOpen}
@@ -522,6 +624,7 @@ export default function LeadsBoard({
     </>
   );
 
+  // Panel layout (ichki sahifa)
   if (panelLayout) {
     return (
       <Box
@@ -534,6 +637,7 @@ export default function LeadsBoard({
         px={{ base: 4, md: 5 }}
         py={4}
         pb={8}
+        position="relative"
       >
         {toolbar}
         {boardContent}
@@ -542,6 +646,7 @@ export default function LeadsBoard({
     );
   }
 
+  // To'liq sahifa layout
   return (
     <Box
       ref={scroll.mainScrollRef}
@@ -554,6 +659,7 @@ export default function LeadsBoard({
       pb={10}
       bg="bg"
       boxSizing="border-box"
+      position="relative"
     >
       {toolbar}
       {boardContent}
