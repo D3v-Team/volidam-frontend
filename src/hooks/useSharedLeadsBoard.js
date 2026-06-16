@@ -65,42 +65,55 @@
       if (search) params.searchTerm = search;
       if (assignedId) params.assigned_id = assignedId;
 
-      apiLids
-        .filter(params)
-        .then((res) => {
-          if (token !== abortRef.current) return;
+      const doFetch = (attempt = 1) => {
+        apiLids
+          .filter(params)
+          .then((res) => {
+            if (token !== abortRef.current) return;
 
-          const columns = res.data?.columns ?? res.data?.data ?? res.data ?? [];
-          if (!Array.isArray(columns)) return;
+            const columns = res.data?.columns ?? res.data?.data ?? res.data ?? [];
+            if (!Array.isArray(columns)) return;
 
-          const newStates = {};
-          columns.forEach((col) => {
-            const sid = col.status_id;
-            if (!sid) return;
-            const lids = col.data ?? [];
-            const total = col.total ?? lids.length;
-            newStates[sid] = {
-              lids,
-              total,
-              page: 1,
-              hasMore: lids.length >= PAGE_SIZE && lids.length < total,
-              loading: false,
-              // child statuslarni ham saqlaymiz
-              childStatusesByType: col.child_statuses_by_type ?? {},
-              statusName: col.status_name,
-              statusColor: col.status_color,
-              statusOrder: col.status_order,
-              isDefault: col.is_default,
-            };
-            isLoadingRef.current[sid] = false;
+            const newStates = {};
+            columns.forEach((col) => {
+              const sid = col.status_id;
+              if (!sid) return;
+              const lids = col.data ?? [];
+              const total = col.total ?? lids.length;
+              newStates[sid] = {
+                lids,
+                total,
+                page: 1,
+                hasMore: lids.length >= PAGE_SIZE && lids.length < total,
+                loading: false,
+                // child statuslarni ham saqlaymiz
+                childStatusesByType: col.child_statuses_by_type ?? {},
+                statusName: col.status_name,
+                statusColor: col.status_color,
+                statusOrder: col.status_order,
+                isDefault: col.is_default,
+              };
+              isLoadingRef.current[sid] = false;
+            });
+
+            setColumnStates(newStates);
+          })
+          .catch((err) => {
+            if (token !== abortRef.current) return;
+            // 500 xatolikda bir marta qayta urinish
+            const status = err?.response?.status;
+            if (attempt === 1 && status >= 500) {
+              setTimeout(() => {
+                if (token !== abortRef.current) return;
+                doFetch(2);
+              }, 800);
+              return;
+            }
+            setColumnStates({});
           });
+      };
 
-          setColumnStates(newStates);
-        })
-        .catch(() => {
-          if (token !== abortRef.current) return;
-          setColumnStates({});
-        });
+      doFetch(1);
     }, [statusFilter, dayType, search, assignedId]);
 
     useEffect(() => {

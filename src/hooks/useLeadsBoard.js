@@ -3,6 +3,12 @@ import { apiLids } from "../Services/api/Lids";
 import { apiLidStatuses } from "../Services/api/LidStatuses";
 import { unwrapEntity } from "../utils/api/parsePagination";
 import {
+    buildLeadsBoardFilterSig,
+    LEADS_KANBAN_SCROLL_RESTORE_MAX_PAGES,
+    leadsBoardScrollSessionKey,
+    readLeadsBoardScrollSession,
+} from "../components/leads/leadsBoardScrollSession";
+import {
     mergeLidsGrouped,
     normalizeLidFromApi,
     parseLidsBoardResponse,
@@ -11,29 +17,45 @@ import {
 
 const PAGE_SIZE = 20;
 
-/**
- * useLeadsBoard hook manages pagination, filtering, and data merging for the Kanban board.
- * 
- * Features:
- * - Loads page 1 with all statuses
- * - Appends additional pages on scroll
- * - Resets to page 1 when filters change
- * - Handles concurrent requests with fetchLock
- */
-export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "", role = "" } = {}) {
+export function useLeadsBoard({
+    statusFilter = "",
+    search = "",
+    assignedId = "",
+    role = "",
+    roleScope = "default",
+} = {}) {
+    const sessionKey = leadsBoardScrollSessionKey(roleScope);
+    const filterSig = buildLeadsBoardFilterSig({
+        statusFilter,
+        search,
+        assignedId,
+        role,
+    });
+
     const [statuses, setStatuses] = useState([]);
     const [lidsByStatus, setLidsByStatus] = useState({});
     const [counts, setCounts] = useState({});
+    const [paginationTotal, setPaginationTotal] = useState(0);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [moving, setMoving] = useState(false);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
-    
+    const [sessionHydrated, setSessionHydrated] = useState(false);
+    const [restoringPages, setRestoringPages] = useState(false);
+
     const fetchLock = useRef(0);
     const statusesRef = useRef([]);
-    const loadingMoreRef = useRef(false);  // Track loading state to prevent duplicate requests
+    const loadingMoreRef = useRef(false);
     const stateRef = useRef({ loading: true, loadingMore: false, hasMore: false });
+    const pageRef = useRef(1);
+    const skipPageEffectFetchRef = useRef(false);
+    const restoreInProgressRef = useRef(false);
+    const restoredSigRef = useRef("");
+
+    useEffect(() => {
+        pageRef.current = page;
+    }, [page]);
 
     useEffect(() => {
         statusesRef.current = statuses;
@@ -43,19 +65,14 @@ export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "",
         loadingMoreRef.current = loadingMore;
     }, [loadingMore]);
 
-    /**
-     * Fetches a page of lids and either replaces or appends to state
-     * @param {number} pageNumber - Page to fetch
-     * @param {boolean} append - If true, merges with existing data; if false, replaces
-     */
     const loadPage = useCallback(
-        async ({ pageNumber, append }) => {
+        async ({ pageNumber, append, silent = false }) => {
             const fetchId = ++fetchLock.current;
-            if (append) setLoadingMore(true);
-            else setLoading(true);
+            if (append && !silent) setLoadingMore(true);
+            else if (!append) setLoading(true);
 
             try {
-                const lidsParams = { 
+                const lidsParams = {
                     page: pageNumber,
                     limit: PAGE_SIZE,
                 };
@@ -64,13 +81,11 @@ export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "",
                 if (role) lidsParams.role = role;
                 if (search?.trim()) lidsParams.searchTerm = search.trim();
 
-                // Page 1: fetch both statuses and lids in parallel
-                // Subsequent pages: fetch lids only
                 const [statusRes, lidsRes] =
                     pageNumber === 1
                         ? await Promise.all([
-                            apiLidStatuses.getAll(),
-                            apiLids.getList(lidsParams),
+                              apiLidStatuses.getAll(),
+                              apiLids.getList(lidsParams),
                           ])
                         : [null, await apiLids.getList(lidsParams)];
 
@@ -111,14 +126,13 @@ export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "",
                     }
                 } else {
                     setTotalPages(calculatedTotalPages);
+                    // Birinchi pageda API total ni saqlash (filter holatida to'g'ri total)
+                    if (pagination?.total > 0) {
+                        setPaginationTotal(Number(pagination.total));
+                    }
                 }
-                
-                
-                
-                // Merge or replace counts
+
                 setCounts((prev) => (append ? { ...prev, ...countMap } : countMap));
-                
-                // Merge or replace lids by status
                 setLidsByStatus((prev) =>
                     append ? mergeLidsGrouped(prev, grouped, statusList) : grouped
                 );
@@ -131,6 +145,7 @@ export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "",
                     setCounts({});
                     setTotalPages(1);
                 }
+                throw error;
             } finally {
                 if (fetchId === fetchLock.current) {
                     setLoading(false);
@@ -141,17 +156,101 @@ export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "",
         [search, statusFilter, assignedId, role]
     );
 
-    // Effect 1: Reset to page 1 when filters change
+    // Filtr o'zgarganda page 1 dan boshlash
     useEffect(() => {
-        setPage(1);
-        loadPage({ pageNumber: 1, append: false });
-    }, [search, statusFilter, assignedId, loadPage, role]);
+        const saved = readLeadsBoardScrollSession(sessionKey);
+        const willRestorePages =
+            saved &&
+            String(saved.filterSig ?? "") === filterSig &&
+            Math.floor(Number(saved.maxLoadedPage) || 1) > 1;
 
-    // Effect 2: Load next page when page state changes
+        setPage(1);
+        pageRef.current = 1;
+        setSessionHydrated(false);
+        setRestoringPages(willRestorePages);
+        restoredSigRef.current = "";
+        skipPageEffectFetchRef.current = false;
+        restoreInProgressRef.current = false;
+        setPaginationTotal(0);
+        loadPage({ pageNumber: 1, append: false });
+    }, [search, statusFilter, assignedId, loadPage, role, filterSig, sessionKey]);
+
+    // Sessiondan sahifalarni tiklash (detaildan qaytganda)
+    useEffect(() => {
+        if (loading) return;
+        if (statuses.length === 0) {
+            setSessionHydrated(true);
+            return;
+        }
+        if (restoredSigRef.current === filterSig) {
+            setSessionHydrated(true);
+            return;
+        }
+
+        const saved = readLeadsBoardScrollSession(sessionKey);
+        if (!saved || String(saved.filterSig ?? "") !== filterSig) {
+            restoredSigRef.current = filterSig;
+            setSessionHydrated(true);
+            return;
+        }
+
+        const savedMax = Math.max(
+            1,
+            Math.min(
+                LEADS_KANBAN_SCROLL_RESTORE_MAX_PAGES,
+                Math.floor(Number(saved.maxLoadedPage) || 1)
+            )
+        );
+
+        if (savedMax <= 1) {
+            restoredSigRef.current = filterSig;
+            setSessionHydrated(true);
+            return;
+        }
+
+        let cancelled = false;
+        restoreInProgressRef.current = true;
+        setRestoringPages(true);
+        setSessionHydrated(false);
+
+        (async () => {
+            try {
+                for (let p = 2; p <= savedMax; p++) {
+                    if (cancelled) return;
+                    await loadPage({ pageNumber: p, append: true, silent: true });
+                }
+                if (cancelled) return;
+                skipPageEffectFetchRef.current = true;
+                setPage(savedMax);
+                pageRef.current = savedMax;
+                restoredSigRef.current = filterSig;
+                setSessionHydrated(true);
+            } catch (e) {
+                console.error("Failed to restore leads board pages:", e);
+                restoredSigRef.current = filterSig;
+                setSessionHydrated(true);
+            } finally {
+                restoreInProgressRef.current = false;
+                setRestoringPages(false);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [loading, statuses.length, filterSig, sessionKey, loadPage]);
+
+    // Scroll orqali keyingi sahifa
     useEffect(() => {
         if (page <= 1) return;
+        if (skipPageEffectFetchRef.current) {
+            skipPageEffectFetchRef.current = false;
+            return;
+        }
+        if (restoreInProgressRef.current) return;
+        if (!sessionHydrated) return;
         loadPage({ pageNumber: page, append: true });
-    }, [page, loadPage]);
+    }, [page, loadPage, sessionHydrated]);
 
     const hasMoreByCounts = useMemo(() => {
         return statuses.some((s) => {
@@ -170,11 +269,11 @@ export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "",
     const loadMore = useCallback(() => {
         const s = stateRef.current;
         if (s.loadingMore || s.loading || !s.hasMore) return;
+        if (restoreInProgressRef.current) return;
+        if (!sessionHydrated) return;
         setPage((p) => p + 1);
-    }, []);
+    }, [sessionHydrated]);
 
-    // ========== Other operations (move, create, update, delete) ==========
-    
     const moveLid = async (lidId, fromStatusId, toStatusId) => {
         if (fromStatusId === toStatusId) return;
 
@@ -185,15 +284,14 @@ export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "",
         setMoving(true);
         const prev = lidsByStatus;
         const prevCounts = counts;
-        
-        // Optimistic update
+
         const optimistic = { ...lidsByStatus };
         optimistic[fromStatusId] = sourceItems.filter((l) => l.id !== lidId);
         optimistic[toStatusId] = [
             { ...lid, status_id: toStatusId, status: { ...lid.status, id: toStatusId } },
             ...(optimistic[toStatusId] || []),
         ];
-        
+
         setLidsByStatus(optimistic);
         setCounts((c) => ({
             ...c,
@@ -213,7 +311,10 @@ export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "",
     };
 
     const refreshBoard = async () => {
+        restoredSigRef.current = "";
+        setSessionHydrated(false);
         setPage(1);
+        pageRef.current = 1;
         await loadPage({ pageNumber: 1, append: false });
     };
 
@@ -253,7 +354,9 @@ export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "",
         await refreshBoard();
     };
 
-    const totalLids = Object.values(counts).reduce((a, b) => a + (Number(b) || 0), 0);
+    const totalLids = paginationTotal > 0
+        ? paginationTotal
+        : Object.values(counts).reduce((a, b) => a + (Number(b) || 0), 0);
 
     const visibleStatuses = statusFilter
         ? statuses.filter((s) => s.id === statusFilter)
@@ -280,5 +383,9 @@ export function useLeadsBoard({ statusFilter = "", search = "", assignedId = "",
         createStatus,
         updateStatus,
         deleteStatus,
+        sessionHydrated,
+        restoringPages,
+        restoreInProgressRef,
+        filterSig,
     };
-}
+};

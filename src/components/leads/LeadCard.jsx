@@ -60,6 +60,7 @@ export default function LeadCard({
 
   return (
     <Box
+      data-lead-id={lid?.id ? String(lid.id) : undefined}
       px={4}
       py={4}
       w="100%"
