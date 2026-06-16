@@ -36,6 +36,7 @@ export default function LeadsBoard({
   panelLayout = false,
   scrollRoleScope = "default",
   maxVisibleColumns = 4,
+  detailOpen = false,
 }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -44,7 +45,7 @@ export default function LeadsBoard({
   const SESSION_KEY = `leadsFilters_${scrollRoleScope}`;
   const getFilterSession = () => {
     try {
-      return JSON.parse(sessionStorage.getItem(SESSION_KEY)) || {};
+      return JSON.parse(localStorage.getItem(SESSION_KEY)) || {};
     } catch {
       return {};
     }
@@ -92,7 +93,7 @@ export default function LeadsBoard({
 
   useEffect(() => {
     try {
-      sessionStorage.setItem(
+      localStorage.setItem(
         SESSION_KEY,
         JSON.stringify({ search, filterRole, filterAssignedId })
       );
@@ -140,7 +141,10 @@ export default function LeadsBoard({
     filterSig,
     sessionHydrated,
     restoreInProgressRef,
+    // Detail ochiq bo'lganda scroll restore ishga tushmaydi —
+    // leads board scroll o'sha joyda qoladi, restore kerak emas
     ready:
+      !detailOpen &&
       !loading &&
       !restoringPages &&
       allStatuses.length > 0 &&

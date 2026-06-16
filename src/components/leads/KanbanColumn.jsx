@@ -17,6 +17,7 @@ import {
   Tooltip,
   SimpleGrid,
   Flex,
+  Portal,
 } from "@chakra-ui/react";
 import { useState } from "react";
 import { MoreVertical, Pencil, Trash2, Plus, LayoutGrid } from "lucide-react";
@@ -30,11 +31,14 @@ function ColumnHeaderActionsMenu({
   showEdit,
   showDelete,
   bannerActionHover,
+  menuListPortalProps,
 }) {
   const menuHoverBg = useColorModeValue("gray.50", "whiteAlpha.100");
   const menuDangerHoverBg = useColorModeValue("red.50", "whiteAlpha.100");
   const dangerColor = useColorModeValue("red.200", "red.300");
 
+  // Add Portal for MenuList to avoid overflow issues in odd/even column grid z-index stacking
+  // menuListPortalProps is passed as { container: document.body }
   return (
     <Menu placement="bottom-end" isLazy>
       <MenuButton
@@ -48,48 +52,50 @@ function ColumnHeaderActionsMenu({
         _hover={{ bg: bannerActionHover }}
         onClick={(e) => e.stopPropagation()}
       />
-      <MenuList minW="180px" zIndex={20}>
-        {showAddChild ? (
-          <MenuItem
-            icon={<Plus size={14} />}
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddChild?.();
-            }}
-            borderRadius="md"
-            _hover={{ bg: menuHoverBg }}
-          >
-            Child qo&apos;shish
-          </MenuItem>
-        ) : null}
-        {showEdit ? (
-          <MenuItem
-            icon={<Pencil size={14} />}
-            onClick={(e) => {
-              e.stopPropagation();
-              onEditColumn?.();
-            }}
-            borderRadius="md"
-            _hover={{ bg: menuHoverBg }}
-          >
-            Tahrirlash
-          </MenuItem>
-        ) : null}
-        {showDelete ? (
-          <MenuItem
-            icon={<Trash2 size={14} />}
-            color={dangerColor}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDeleteColumn?.();
-            }}
-            borderRadius="md"
-            _hover={{ bg: menuDangerHoverBg }}
-          >
-            O&apos;chirish
-          </MenuItem>
-        ) : null}
-      </MenuList>
+      <Portal {...(menuListPortalProps || {})}>
+        <MenuList minW="180px" zIndex={1500}>
+          {showAddChild ? (
+            <MenuItem
+              icon={<Plus size={14} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddChild?.();
+              }}
+              borderRadius="md"
+              _hover={{ bg: menuHoverBg }}
+            >
+              Child qo&apos;shish
+            </MenuItem>
+          ) : null}
+          {showEdit ? (
+            <MenuItem
+              icon={<Pencil size={14} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditColumn?.();
+              }}
+              borderRadius="md"
+              _hover={{ bg: menuHoverBg }}
+            >
+              Tahrirlash
+            </MenuItem>
+          ) : null}
+          {showDelete ? (
+            <MenuItem
+              icon={<Trash2 size={14} />}
+              color={dangerColor}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteColumn?.();
+              }}
+              borderRadius="md"
+              _hover={{ bg: menuDangerHoverBg }}
+            >
+              O&apos;chirish
+            </MenuItem>
+          ) : null}
+        </MenuList>
+      </Portal>
     </Menu>
   );
 }
@@ -183,31 +189,33 @@ function ChildCardFull({ child, onEdit, onDelete, canManage }) {
               onClick={(e) => e.stopPropagation()}
               flexShrink={0}
             />
-            <MenuList minW="160px" zIndex={20}>
-              <MenuItem
-                icon={<Pencil size={13} />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit?.(child);
-                }}
-                borderRadius="md"
-                _hover={{ bg: menuHoverBg }}
-              >
-                Tahrirlash
-              </MenuItem>
-              <MenuItem
-                icon={<Trash2 size={13} />}
-                color={dangerColor}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete?.(child);
-                }}
-                borderRadius="md"
-                _hover={{ bg: menuDangerHoverBg }}
-              >
-                O&apos;chirish
-              </MenuItem>
-            </MenuList>
+            <Portal>
+              <MenuList minW="160px" zIndex={1500}>
+                <MenuItem
+                  icon={<Pencil size={13} />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit?.(child);
+                  }}
+                  borderRadius="md"
+                  _hover={{ bg: menuHoverBg }}
+                >
+                  Tahrirlash
+                </MenuItem>
+                <MenuItem
+                  icon={<Trash2 size={13} />}
+                  color={dangerColor}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete?.(child);
+                  }}
+                  borderRadius="md"
+                  _hover={{ bg: menuDangerHoverBg }}
+                >
+                  O&apos;chirish
+                </MenuItem>
+              </MenuList>
+            </Portal>
           </Menu>
         ) : null}
       </Flex>
@@ -407,6 +415,8 @@ export default function KanbanColumn({
                   showEdit={showEdit}
                   showDelete={showDelete}
                   bannerActionHover={bannerActionHover}
+                  // Pass menuListPortalProps to ensure MenuList portal is attached to body (avoid stacking issues)
+                  menuListPortalProps={{}}
                 />
               ) : null}
             </HStack>

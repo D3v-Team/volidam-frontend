@@ -4,9 +4,6 @@ import { apiLidStatuses } from "../Services/api/LidStatuses";
 import { unwrapEntity } from "../utils/api/parsePagination";
 import {
     buildLeadsBoardFilterSig,
-    LEADS_KANBAN_SCROLL_RESTORE_MAX_PAGES,
-    leadsBoardScrollSessionKey,
-    readLeadsBoardScrollSession,
 } from "../components/leads/leadsBoardScrollSession";
 import {
     mergeLidsGrouped,
@@ -24,7 +21,6 @@ export function useLeadsBoard({
     role = "",
     roleScope = "default",
 } = {}) {
-    const sessionKey = leadsBoardScrollSessionKey(roleScope);
     const filterSig = buildLeadsBoardFilterSig({
         statusFilter,
         search,
@@ -158,87 +154,24 @@ export function useLeadsBoard({
 
     // Filtr o'zgarganda page 1 dan boshlash
     useEffect(() => {
-        const saved = readLeadsBoardScrollSession(sessionKey);
-        const willRestorePages =
-            saved &&
-            String(saved.filterSig ?? "") === filterSig &&
-            Math.floor(Number(saved.maxLoadedPage) || 1) > 1;
-
         setPage(1);
         pageRef.current = 1;
         setSessionHydrated(false);
-        setRestoringPages(willRestorePages);
+        setRestoringPages(false);
         restoredSigRef.current = "";
         skipPageEffectFetchRef.current = false;
         restoreInProgressRef.current = false;
         setPaginationTotal(0);
         loadPage({ pageNumber: 1, append: false });
-    }, [search, statusFilter, assignedId, loadPage, role, filterSig, sessionKey]);
+    }, [search, statusFilter, assignedId, loadPage, role, filterSig]);
 
-    // Sessiondan sahifalarni tiklash (detaildan qaytganda)
+    // Session hydration — sahifalar tiklash kerak emas (overlay arxitekturasi)
     useEffect(() => {
         if (loading) return;
-        if (statuses.length === 0) {
-            setSessionHydrated(true);
-            return;
-        }
-        if (restoredSigRef.current === filterSig) {
-            setSessionHydrated(true);
-            return;
-        }
-
-        const saved = readLeadsBoardScrollSession(sessionKey);
-        if (!saved || String(saved.filterSig ?? "") !== filterSig) {
-            restoredSigRef.current = filterSig;
-            setSessionHydrated(true);
-            return;
-        }
-
-        const savedMax = Math.max(
-            1,
-            Math.min(
-                LEADS_KANBAN_SCROLL_RESTORE_MAX_PAGES,
-                Math.floor(Number(saved.maxLoadedPage) || 1)
-            )
-        );
-
-        if (savedMax <= 1) {
-            restoredSigRef.current = filterSig;
-            setSessionHydrated(true);
-            return;
-        }
-
-        let cancelled = false;
-        restoreInProgressRef.current = true;
-        setRestoringPages(true);
-        setSessionHydrated(false);
-
-        (async () => {
-            try {
-                for (let p = 2; p <= savedMax; p++) {
-                    if (cancelled) return;
-                    await loadPage({ pageNumber: p, append: true, silent: true });
-                }
-                if (cancelled) return;
-                skipPageEffectFetchRef.current = true;
-                setPage(savedMax);
-                pageRef.current = savedMax;
-                restoredSigRef.current = filterSig;
-                setSessionHydrated(true);
-            } catch (e) {
-                console.error("Failed to restore leads board pages:", e);
-                restoredSigRef.current = filterSig;
-                setSessionHydrated(true);
-            } finally {
-                restoreInProgressRef.current = false;
-                setRestoringPages(false);
-            }
-        })();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [loading, statuses.length, filterSig, sessionKey, loadPage]);
+        // Restore sahifalar kerak emas — leads board hech qachon unmount bo'lmaydi
+        restoredSigRef.current = filterSig;
+        setSessionHydrated(true);
+    }, [loading, filterSig]);
 
     // Scroll orqali keyingi sahifa
     useEffect(() => {

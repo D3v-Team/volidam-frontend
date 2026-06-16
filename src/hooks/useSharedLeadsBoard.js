@@ -272,6 +272,8 @@
             type: col.childStatus?.type,
             children: [],
             hasChildren: false,
+            isChild: true,
+            childData: col.childStatus,
           }))
           .sort((a, b) => a.order - b.order)
       : parentStatuses

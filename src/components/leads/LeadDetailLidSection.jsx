@@ -147,17 +147,13 @@ export default function LeadDetailLidSection({
 
   // ── Read-only ko'rinish ──
   if (!canEdit) {
-    // Vaqtni chiqarishda har doim status+daydan topilsin
-    let vaqtiName = "";
-    if (
-      selectedTime &&
-      selectedDay &&
-      Array.isArray(timeOptions) &&
-      allChildStatusIds.includes(selectedTime)
-    ) {
-      const found = timeOptions.find((t) => String(t.id) === String(selectedTime));
-      vaqtiName = found?.name || "";
-    }
+    // child_status to'g'ridan-to'g'ri lid dan olamiz (API qaytaradi)
+    const childStatus = lid.child_status;
+    const childName = childStatus?.name || "";
+    const childType = childStatus?.type || "";
+
+    // type ni o'zbek tilida ko'rsatish
+    const typeLabel = childType === "toq" ? "Toq" : childType === "juft" ? "Juft" : childType;
 
     return (
       <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
@@ -203,15 +199,22 @@ export default function LeadDetailLidSection({
           </Text>
         </Box>
 
-        {/* Read-only: child status ko'rinishi */}
-        {selectedTime && vaqtiName && (
+        {/* Child status: name + type */}
+        {childName && (
           <Box>
             <Text fontSize="xs" fontWeight="600" color="textSecondary" mb={1}>
               Vaqti
             </Text>
-            <Text fontSize="md" fontWeight="600" color="textSecondary">
-              {vaqtiName}
-            </Text>
+            <HStack spacing={2} align="center">
+              <Text fontSize="md" fontWeight="600" color="textSecondary">
+                {childName}
+              </Text>
+              {typeLabel && (
+                <Badge colorScheme={childType === "toq" ? "orange" : "purple"} borderRadius="full" px={2} fontSize="xs">
+                  {typeLabel}
+                </Badge>
+              )}
+            </HStack>
           </Box>
         )}
       </SimpleGrid>

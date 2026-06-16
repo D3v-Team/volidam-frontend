@@ -10,7 +10,6 @@ import superAdminRoutes from "./routes/superAdminRoutes";
 import Login from "./pages/Login/Login";
 import Register from "./pages/Register/Register";
 import Leads from "./pages/Leads/Leads";
-import LeadDetailPage from "./pages/Leads/LeadDetailPage";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import SharedPageOne from "./pages/Shared/SharedPageOne";
 import SharedPageTwo from "./pages/Shared/SharedPageTwo";
@@ -44,8 +43,10 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="shared-one" element={<SharedPageOne />} />
             <Route path="shared-two" element={<SharedPageTwo />} />
+            {/* leads va leads/:id — ikkalasi ham Leads komponentini render qiladi,
+                detail overlay sifatida uning ichida chiqadi */}
             <Route path="leads" element={<Leads />} />
-            <Route path="leads/:id" element={<LeadDetailPage />} />
+            <Route path="leads/:id" element={<Leads />} />
           </Route>
         </Route>
 
@@ -55,8 +56,10 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="shared-one" element={<SharedPageOne />} />
             <Route path="shared-two" element={<SharedPageTwo />} />
+            {/* leads va leads/:id — ikkalasi ham Leads komponentini render qiladi,
+                detail overlay sifatida uning ichida chiqadi */}
             <Route path="leads" element={<Leads />} />
-            <Route path="leads/:id" element={<LeadDetailPage />} />
+            <Route path="leads/:id" element={<Leads />} />
           </Route>
         </Route>
 

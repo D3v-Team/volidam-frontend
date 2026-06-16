@@ -3,7 +3,6 @@ import Dashboard from "../pages/Dashboard/Dashboard";
 import Admins from "../pages/Admins/Admins";
 import Operators from "../pages/Operators/Operators";
 import Leads from "../pages/Leads/Leads";
-import LeadDetailPage from "../pages/Leads/LeadDetailPage";
 import SharedPageOne from "../pages/Shared/SharedPageOne";
 import SharedPageTwo from "../pages/Shared/SharedPageTwo";
 
@@ -47,7 +46,7 @@ const superAdminRoutes = [
   {
     name: "leadDetail",
     path: "leads/:id",
-    element: <LeadDetailPage />,
+    element: <Leads />,
   },
 ];
 
