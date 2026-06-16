@@ -148,11 +148,15 @@ export function extractLidsPagination(res, requestLimit = 20) {
         };
     }
 
-    if (Array.isArray(inner?.columns) && inner.columns.length > 0) {
+    const columns = inner?.columns ??
+        (Array.isArray(root?.data) && root.data[0]?.status ? root.data : null) ??
+        (Array.isArray(inner) && inner[0]?.status ? inner : null);
+
+    if (Array.isArray(columns) && columns.length > 0) {
         let maxTotalPages = 1;
         let total = 0;
 
-        for (const col of inner.columns) {
+        for (const col of columns) {
             const colPag = getColumnPagination(col);
             const colLimit = Number(colPag?.limit ?? limit) || limit;
             const colTotal = getColumnTotal(col) ?? 0;
@@ -230,7 +234,10 @@ export function parseLidsBoardResponse(res, statusList, search = "", requestLimi
         root?.data != null && typeof root.data === "object" && !Array.isArray(root.data)
             ? root.data
             : root;
-    const columns = inner?.columns ?? root?.columns;
+    const columns = inner?.columns ?? root?.columns ??
+        // Agar data to'g'ridan array bo'lsa va status+items tuzilmasi bo'lsa — columns sifatida qabul qilamiz
+        (Array.isArray(root?.data) && root.data[0]?.status ? root.data : null) ??
+        (Array.isArray(inner) && inner[0]?.status ? inner : null);
     const pagination = extractLidsPagination(res, requestLimit);
 
     if (Array.isArray(columns) && columns.length > 0) {

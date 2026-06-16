@@ -74,30 +74,63 @@
           .then((res) => {
             if (token !== abortRef.current) return;
 
-            const columns = res.data?.columns ?? res.data?.data ?? res.data ?? [];
-            if (!Array.isArray(columns)) return;
+            // Format 1: { data: [ { child_status, lids, total_count } ] } — toq/juft
+            // Format 2: { data: [ { status, items, total } ] }            — oddiy
+            const raw = res.data?.data ?? res.data ?? [];
+            const columns = Array.isArray(raw) ? raw : [];
+            if (!columns.length) { setColumnStates({}); return; }
 
             const newStates = {};
-            columns.forEach((col) => {
-              const sid = col.status_id;
-              if (!sid) return;
-              const lids = col.data ?? [];
-              const total = col.total ?? lids.length;
-              newStates[sid] = {
-                lids,
-                total,
-                page: 1,
-                hasMore: lids.length >= PAGE_SIZE && lids.length < total,
-                loading: false,
-                // child statuslarni ham saqlaymiz
-                childStatusesByType: col.child_statuses_by_type ?? {},
-                statusName: col.status_name,
-                statusColor: col.status_color,
-                statusOrder: col.status_order,
-                isDefault: col.is_default,
-              };
-              isLoadingRef.current[sid] = false;
-            });
+
+            // child_status formatimi yoki status formatimi aniqlash
+            const isChildFormat = columns[0]?.child_status != null;
+
+            if (isChildFormat) {
+              // Toq/juft kun formati: child_status bo'yicha guruhlash
+              // Barchasini bitta virtual "statusFilter" key ostiga yig'amiz,
+              // lekin child_status id bo'yicha alohida saqlash uchun child_status_id ishlatamiz
+              columns.forEach((col) => {
+                const childStatus = col.child_status;
+                if (!childStatus?.id) return;
+                const cid = String(childStatus.id);
+                const lids = (col.lids ?? []).map((l) => ({
+                  ...l,
+                  child_status_id: l.child_status_id ?? cid,
+                }));
+                const total = col.total_count ?? lids.length;
+                newStates[cid] = {
+                  lids,
+                  total,
+                  page: 1,
+                  hasMore: col.has_next_page ?? (lids.length < total),
+                  loading: false,
+                  childStatus,
+                  isChildColumn: true,
+                };
+                isLoadingRef.current[cid] = false;
+              });
+            } else {
+              // Oddiy format: status bo'yicha guruhlash
+              columns.forEach((col) => {
+                const sid = col.status_id ?? col.status?.id;
+                if (!sid) return;
+                const lids = col.data ?? col.items ?? [];
+                const total = col.total ?? col.total_count ?? lids.length;
+                newStates[sid] = {
+                  lids,
+                  total,
+                  page: 1,
+                  hasMore: lids.length >= PAGE_SIZE && lids.length < total,
+                  loading: false,
+                  childStatusesByType: col.child_statuses_by_type ?? {},
+                  statusName: col.status_name,
+                  statusColor: col.status_color,
+                  statusOrder: col.status_order,
+                  isDefault: col.is_default,
+                };
+                isLoadingRef.current[sid] = false;
+              });
+            }
 
             setColumnStates(newStates);
           })
@@ -152,35 +185,66 @@
           if (assignedId) params.assigned_id = assignedId;
 
           const res = await apiLids.filter(params);
-          const columns = res.data?.columns ?? res.data?.data ?? res.data ?? [];
-          const colData = Array.isArray(columns)
-            ? columns.find((c) => c.status_id === statusId)
-            : null;
+          const raw = res.data?.data ?? res.data ?? [];
+          const columns = Array.isArray(raw) ? raw : [];
 
-          if (!colData) return;
+          // child_status formatimi aniqlash
+          const isChildFormat = columns[0]?.child_status != null;
 
-          const newLids = colData.data ?? [];
-          const total = colData.total ?? 0;
+          if (isChildFormat) {
+            // child_status bo'yicha — kerakli column ni child_status.id orqali topamiz
+            const colData = columns.find((c) => String(c.child_status?.id) === String(statusId));
+            if (!colData) return;
+            const newLids = (colData.lids ?? []).map((l) => ({
+              ...l,
+              child_status_id: l.child_status_id ?? statusId,
+            }));
+            const total = colData.total_count ?? 0;
 
-          setColumnStates((prev) => {
-            const existing = prev[statusId];
-            if (!existing) return prev;
+            setColumnStates((prev) => {
+              const existing = prev[statusId];
+              if (!existing) return prev;
+              const existingIds = new Set(existing.lids.map((l) => l.id));
+              const fresh = newLids.filter((l) => !existingIds.has(l.id));
+              const merged = [...existing.lids, ...fresh];
+              return {
+                ...prev,
+                [statusId]: {
+                  ...existing,
+                  lids: merged,
+                  page: nextPage,
+                  hasMore: colData.has_next_page ?? (merged.length < total),
+                  loading: false,
+                },
+              };
+            });
+          } else {
+            // Oddiy format
+            const colData = columns.find(
+              (c) => String(c.status_id ?? c.status?.id) === String(statusId)
+            );
+            if (!colData) return;
+            const newLids = colData.data ?? colData.items ?? [];
+            const total = colData.total ?? colData.total_count ?? 0;
 
-            const existingIds = new Set(existing.lids.map((l) => l.id));
-            const fresh = newLids.filter((l) => !existingIds.has(l.id));
-            const merged = [...existing.lids, ...fresh];
-
-            return {
-              ...prev,
-              [statusId]: {
-                ...existing,
-                lids: merged,
-                page: nextPage,
-                hasMore: merged.length < total,
-                loading: false,
-              },
-            };
-          });
+            setColumnStates((prev) => {
+              const existing = prev[statusId];
+              if (!existing) return prev;
+              const existingIds = new Set(existing.lids.map((l) => l.id));
+              const fresh = newLids.filter((l) => !existingIds.has(l.id));
+              const merged = [...existing.lids, ...fresh];
+              return {
+                ...prev,
+                [statusId]: {
+                  ...existing,
+                  lids: merged,
+                  page: nextPage,
+                  hasMore: merged.length < total,
+                  loading: false,
+                },
+              };
+            });
+          }
         } catch {
           setColumnStates((prev) => ({
             ...prev,
@@ -194,20 +258,35 @@
     );
 
     // ── Derived state ──
-    // parentStatuses dan tartiblab statuses yasaymiz
-    const statuses = parentStatuses
-      .map((ps) => {
-        const col = columnStates[ps.id];
-        if (!col) return null;
-        const childrenForType = col.childStatusesByType?.[dayType] ?? [];
-        return {
-          ...ps,
-          color: ps.color ?? col.statusColor ?? "#378ADD",
-          children: childrenForType,
-          hasChildren: childrenForType.length > 0,
-        };
-      })
-      .filter(Boolean);
+    // Child format (toq/juft) bo'lsa — child_status columnlarini chiqaramiz
+    // Oddiy format bo'lsa — parentStatuses bilan match qilamiz
+    const isChildFormat = Object.values(columnStates).some((c) => c.isChildColumn);
+
+    const statuses = isChildFormat
+      ? Object.entries(columnStates)
+          .map(([cid, col]) => ({
+            id: cid,
+            name: col.childStatus?.name ?? cid,
+            color: col.childStatus?.color ?? "#378ADD",
+            order: col.childStatus?.order ?? 0,
+            type: col.childStatus?.type,
+            children: [],
+            hasChildren: false,
+          }))
+          .sort((a, b) => a.order - b.order)
+      : parentStatuses
+          .map((ps) => {
+            const col = columnStates[ps.id];
+            if (!col) return null;
+            const childrenForType = col.childStatusesByType?.[dayType] ?? [];
+            return {
+              ...ps,
+              color: ps.color ?? col.statusColor ?? "#378ADD",
+              children: childrenForType,
+              hasChildren: childrenForType.length > 0,
+            };
+          })
+          .filter(Boolean);
 
     const lidsByStatus = {};
     const counts = {};
