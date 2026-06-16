@@ -61,6 +61,10 @@ export function useLeadsBoardScroll({
         sessionHydratedRef.current = sessionHydrated;
     }, [sessionHydrated]);
 
+    // userScrolledRef — foydalanuvchi haqiqatan scroll qilganini belgilaydi
+    // Faqat shu true bo'lganda isNearTop tekshiriladi
+    const userScrolledRef = useRef(false);
+
     const flushPersistScroll = useCallback(
         (anchorLidId) => {
             if (typeof window === "undefined" || restoreInProgress.current) return;
@@ -70,14 +74,37 @@ export function useLeadsBoardScroll({
             const anchor =
                 String(anchorLidId ?? explicitAnchorRef.current ?? "").trim() ||
                 getViewportLeadAnchorId(mainScrollRef);
+
+            const sy    = Number(vertical?.windowScrollY) || 0;
+            const sf    = Number(vertical?.scrollFraction);
+            const hasSf = Number.isFinite(sf) && sf >= 0 && sf <= 1;
+            const isBottom  = Boolean(vertical?.nearBottom) || (hasSf && sf > 0.95);
+            const isNearTop = userScrolledRef.current && !isBottom && sy < 64 && (!hasSf || sf < 0.05);
+
+            if (isNearTop) {
+                console.log("[leads scroll] tepa — restore o'chirildi (maxLoadedPage=1)");
+            } else {
+                console.log("[leads scroll] saqlandi", {
+                    sy, sf: hasSf ? sf.toFixed(2) : "n/a", anchor, page: pageRef.current,
+                });
+            }
+
             writeLeadsBoardScrollSession(sessionKey, {
-                filterSig: filterSigRef.current,
-                ...(vertical ?? {}),
+                filterSig:      filterSigRef.current,
+                windowScrollY:  isNearTop ? 0   : sy,
+                scrollFraction: isNearTop ? 0   : isBottom ? 1 : (hasSf ? sf : 0),
+                nearBottom:     isNearTop ? false : vertical?.nearBottom,
+                // applyRestoredPageVerticalScroll kutadigan nomlar:
+                docScrollHeight: vertical?.docScrollHeight,
+                viewportHeight:  vertical?.viewportHeight,
+                // writeLeadsBoardScrollSession scrollPosition uchun:
+                scrollHeight:   vertical?.docScrollHeight,
+                clientHeight:   vertical?.viewportHeight,
                 boardScrollLeft: boardScrollRef.current?.scrollLeft ?? 0,
-                maxLoadedPage: pageRef.current,
-                anchorLidId: anchor,
+                maxLoadedPage:  isNearTop ? 1 : pageRef.current,
+                anchorLidId:    isNearTop ? "" : anchor,
             });
-            if (anchorLidId) explicitAnchorRef.current = String(anchorLidId);
+            if (anchorLidId && !isNearTop) explicitAnchorRef.current = String(anchorLidId);
         },
         [sessionKey, restoreInProgress]
     );
@@ -110,6 +137,7 @@ export function useLeadsBoardScroll({
         restoredSigRef.current = "";
         explicitAnchorRef.current = "";
         lastGoodVerticalScrollRef.current = null;
+        userScrolledRef.current = false;
         const el = mainScrollRef.current;
         if (el) el.scrollTop = 0;
         if (boardScrollRef.current) boardScrollRef.current.scrollLeft = 0;
@@ -119,6 +147,7 @@ export function useLeadsBoardScroll({
         const el = mainScrollRef.current;
         if (!el) return;
         const onScroll = () => {
+            userScrolledRef.current = true;
             snapshotVerticalScrollToRef(lastGoodVerticalScrollRef, mainScrollRef);
             schedulePersistScroll();
         };
@@ -177,7 +206,7 @@ export function useLeadsBoardScroll({
         const anchorLidId = String(saved.anchorLidId ?? "").trim();
         const savedY = Number(saved.windowScrollY) || 0;
         const savedBoardLeft = Number(saved.boardScrollLeft) || 0;
-        const hasScroll = savedY > 0 || saved.nearBottom;
+        const hasScroll = savedY > 0 || saved.nearBottom || saved.nearCenter;
         const hasAnchor = Boolean(anchorLidId);
 
         if (!hasScroll && !hasAnchor && savedBoardLeft <= 0) {
@@ -196,6 +225,7 @@ export function useLeadsBoardScroll({
         const finishRestore = () => {
             restoreInProgress.current = false;
             setScrollRestoring(false);
+            userScrolledRef.current = false;
             snapshotVerticalScrollToRef(lastGoodVerticalScrollRef, mainScrollRef);
             if (boardEl && savedBoardLeft > 0) {
                 boardEl.scrollLeft = savedBoardLeft;
@@ -207,6 +237,8 @@ export function useLeadsBoardScroll({
             requestAnimationFrame(() => {
                 if (hasAnchor) {
                     cancelAnchor = scheduleLeadAnchorIfNeeded(saved, {
+                        scrollPosition: "top",
+                        scrollRootRef: mainScrollRef,
                         onComplete: finishRestore,
                     });
                     return;
@@ -216,6 +248,8 @@ export function useLeadsBoardScroll({
                     boardEl.scrollLeft = savedBoardLeft;
                 }
 
+                // nearCenter bo'lsa — scrollFraction bilan tiklash (fraction session da saqlangan)
+                // applyRestoredPageVerticalScroll scrollFraction ni o'zi handle qiladi
                 cancelVertical = applyRestoredPageVerticalScroll(saved, {
                     scrollRootRef: mainScrollRef,
                     onApplied: () => {

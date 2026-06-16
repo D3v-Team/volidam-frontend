@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useToast } from "@chakra-ui/react";
+
 import { apiLocations } from "../../../utils/Controllers/Locations";
+import { useToast } from "../../../hooks/useToast";
 import {
     apiLocationStatuses,
     normalizeLocationStatusesResponse,
@@ -70,7 +71,7 @@ function getInitialCompanyFilters() {
     return { filterCompanyRegion, filterAssigneeType, filterAssigneeId };
 }
 
-export function useAdminCompanyTasksBoard() {
+export function useAdminCompanyTasksBoard({ notStatusIds, thisDay } = {}) {
     const toast = useToast();
     const fixedAssigneeFilterRole = useMemo(
         () => getFixedAssigneeFilterRole(TASK_TYPE),
@@ -92,6 +93,7 @@ export function useAdminCompanyTasksBoard() {
     const [rows, setRows] = useState([]);
     const [countByStatus, setCountByStatus] = useState({});
     const [loading, setLoading] = useState(false);
+    const [restoring, setRestoring] = useState(true);
     const [kanbanColumns, setKanbanColumns] = useState([]);
     const [statusesLoading, setStatusesLoading] = useState(false);
     const [statusListTick, setStatusListTick] = useState(0);
@@ -115,6 +117,13 @@ export function useAdminCompanyTasksBoard() {
     const boardDragCooldownUntilRef = useRef(0);
     const rowsRef = useRef([]);
     rowsRef.current = rows;
+
+    // Page-dan keladigan qo'shimcha filtrlar (not_statuses / this_day).
+    // Har renderda yangilanadi — shunda loadTasksPage useCallback'i BARQAROR qoladi
+    // (deps o'zgarmaydi, restore/scroll effektlari qayta ishlamaydi), lekin eng
+    // so'nggi qiymatni shu ref orqali o'qiy oladi.
+    const filterExtrasRef = useRef({});
+    filterExtrasRef.current = { notStatusIds, thisDay };
 
     const lastRequestKeyRef = useRef("");
     const tasksFetchInFlightKeyRef = useRef(null);
@@ -170,9 +179,17 @@ export function useAdminCompanyTasksBoard() {
                 effectiveFilterAssigneeType || filterAssigneeType || ""
             ).trim();
             const asgId = String(filterAssigneeId ?? "").trim();
+
+            // Qo'shimcha filtrlarni stabil ref'dan o'qiymiz (eng so'nggi qiymat).
+            const { notStatusIds: nsi, thisDay: td } = filterExtrasRef.current;
+            const notStatuses = Array.from(nsi ?? [])
+                .map(String)
+                .filter(Boolean);
+            const thisDayFlag = !!td;
+
             const pageNum = Math.max(1, Number(pageNumber) || 1);
 
-            const requestKey = `loc|${pageNum}|${COMPANY_KANBAN_PAGE_SIZE}|${append ? "a" : "r"}|${addr}|${asgId || "all"}`;
+            const requestKey = `loc|${pageNum}|${COMPANY_KANBAN_PAGE_SIZE}|${append ? "a" : "r"}|${addr}|${asgId || "all"}|${notStatuses.slice().sort().join(",")}|${thisDayFlag ? 1 : 0}`;
             if (!force) {
                 if (lastRequestKeyRef.current === requestKey) return;
                 if (tasksFetchInFlightKeyRef.current === requestKey) return;
@@ -191,6 +208,8 @@ export function useAdminCompanyTasksBoard() {
                     limit: COMPANY_KANBAN_PAGE_SIZE,
                     address: addr || undefined,
                     assignee_id: asgId || undefined,
+                    not_statuses: notStatuses.length ? notStatuses : undefined,
+                    this_day: thisDayFlag,
                     signal: ac.signal,
                 });
                 const { items, pagination: p, countByStatus: statusCounts } =
@@ -290,6 +309,11 @@ export function useAdminCompanyTasksBoard() {
             mainScrollRef
         );
         const f = persistFiltersRef.current;
+        const sy = Number((vertical ?? lastGoodVerticalScrollRef.current)?.windowScrollY) || 0;
+        const sf = Number((vertical ?? lastGoodVerticalScrollRef.current)?.scrollFraction);
+        const hasSf = Number.isFinite(sf) && sf >= 0 && sf <= 1;
+        const isNearTop = sy < 64 && (!hasSf || sf < 0.05);
+        const maxLoadedPageForRestore = isNearTop ? 1 : pageRef.current;
         // Map field names to match expected format
         const scrollData = {
             filterSig: filterSigRef.current,
@@ -303,7 +327,7 @@ export function useAdminCompanyTasksBoard() {
             nearBottom: vertical?.nearBottom,
             scrollFraction: vertical?.scrollFraction,
             boardScrollLeft: boardScrollRef.current?.scrollLeft ?? 0,
-            maxLoadedPage: pageRef.current,
+            maxLoadedPage: maxLoadedPageForRestore,
             anchorTaskId: getViewportBrokerTaskAnchorId(),
         };
         writeAdminTasksBoardScrollSession(SCROLL_SESSION_KEY, scrollData);
@@ -338,6 +362,7 @@ export function useAdminCompanyTasksBoard() {
         restoredSigRef.current = "";
         sessionHydratedRef.current = false;
         lastGoodVerticalScrollRef.current = null;
+        setRestoring(true);
         const el = mainScrollRef.current;
         if (el) el.scrollTop = 0;
     }, [filterSig]);
@@ -398,6 +423,115 @@ export function useAdminCompanyTasksBoard() {
         if (restoreInProgressRef.current || !sessionHydratedRef.current) return;
         loadTasksPage({ pageNumber: page, append: true, silent: false });
     }, [page, loadTasksPage]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        if (loading || statusesLoading) return;
+        if (rowsRef.current.length === 0) return;
+        if (restoreInProgressRef.current) return;
+        if (restoredSigRef.current === filterSig) return;
+
+        const saved = readAdminTasksBoardScrollSession(SCROLL_SESSION_KEY);
+        if (!saved || String(saved.filterSig ?? "") !== filterSig) {
+            restoredSigRef.current = filterSig;
+            sessionHydratedRef.current = true;
+            setRestoring(false);
+            return;
+        }
+
+        const savedMax = Math.max(
+            1,
+            Math.min(
+                KANBAN_SCROLL_RESTORE_MAX_PAGES,
+                Math.floor(Number(saved.maxLoadedPage) || 1)
+            )
+        );
+        const x = Math.max(0, Number(saved.boardScrollLeft) || 0);
+
+        let verticalScrollCancel = null;
+        let anchorCancel = null;
+        const applyScroll = () => {
+            verticalScrollCancel?.();
+            anchorCancel?.();
+            verticalScrollCancel = applyRestoredPageVerticalScroll(saved, {
+                scrollRootRef: mainScrollRef,
+                onApplied: () => {
+                    const br = boardScrollRef.current;
+                    if (br) br.scrollLeft = x;
+                },
+                onComplete: () => {
+                    anchorCancel?.();
+                    anchorCancel = scheduleBrokerTaskAnchorIfNeeded(saved);
+                },
+            });
+        };
+
+        if (savedMax <= 1) {
+            restoreInProgressRef.current = true;
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    applyScroll();
+                    restoreInProgressRef.current = false;
+                    restoredSigRef.current = filterSig;
+                    sessionHydratedRef.current = true;
+                    setRestoring(false);
+                    flushPersistScroll();
+                });
+            });
+            return () => {
+                verticalScrollCancel?.();
+                anchorCancel?.();
+            };
+        }
+
+        let cancelled = false;
+        setRestoring(true);
+        restoreInProgressRef.current = true;
+        (async () => {
+            try {
+                for (let p = 2; p <= savedMax; p++) {
+                    if (cancelled) return;
+                    await loadTasksPage({
+                        pageNumber: p,
+                        append: true,
+                        silent: true,
+                        force: true,
+                    });
+                }
+                if (cancelled) return;
+                skipPageEffectFetchRef.current = true;
+                setPage(savedMax);
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        if (!cancelled) applyScroll();
+                        restoreInProgressRef.current = false;
+                        if (!cancelled) restoredSigRef.current = filterSig;
+                        if (!cancelled) sessionHydratedRef.current = true;
+                        if (!cancelled) setRestoring(false);
+                        if (!cancelled) flushPersistScroll();
+                    });
+                });
+            } catch (e) {
+                console.error(e);
+                restoreInProgressRef.current = false;
+                sessionHydratedRef.current = true;
+                if (!cancelled) restoredSigRef.current = filterSig;
+                if (!cancelled) setRestoring(false);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+            verticalScrollCancel?.();
+            anchorCancel?.();
+        };
+    }, [
+        loading,
+        statusesLoading,
+        filterSig,
+        loadTasksPage,
+        flushPersistScroll,
+    ]);
 
     useEffect(() => {
         const el = mainScrollRef.current;
@@ -467,20 +601,20 @@ export function useAdminCompanyTasksBoard() {
                 acc[k].push(r);
             }
         }
-        for (const k of Object.keys(acc)) {
-            acc[k] = (acc[k] ?? []).slice().sort((a, b) => {
-                const an = String(a?.details?.location_name ?? a?.name ?? "");
-                const bn = String(b?.details?.location_name ?? b?.name ?? "");
-                const byName = an.localeCompare(bn, "uz");
-                if (byName !== 0) return byName;
-                const at = a?.createdAt ?? a?.created_at ?? "";
-                const bt = b?.createdAt ?? b?.created_at ?? "";
-                return (
-                    (bt ? new Date(bt).getTime() : 0) -
-                    (at ? new Date(at).getTime() : 0)
-                );
-            });
-        }
+        // for (const k of Object.keys(acc)) {
+        //     acc[k] = (acc[k] ?? []).slice().sort((a, b) => {
+        //         const an = String(a?.details?.location_name ?? a?.name ?? "");
+        //         const bn = String(b?.details?.location_name ?? b?.name ?? "");
+        //         const byName = an.localeCompare(bn, "uz");
+        //         if (byName !== 0) return byName;
+        //         const at = a?.createdAt ?? a?.created_at ?? "";
+        //         const bt = b?.createdAt ?? b?.created_at ?? "";
+        //         return (
+        //             (bt ? new Date(bt).getTime() : 0) -
+        //             (at ? new Date(at).getTime() : 0)
+        //         );
+        //     });
+        // }
         return acc;
     }, [rows, kanbanColumns, columnByStatusId]);
 
@@ -627,6 +761,7 @@ export function useAdminCompanyTasksBoard() {
         countByStatus,
         setCountByStatus,
         loading,
+        restoring,
         statusesLoading,
         total,
         kanbanColumns,
