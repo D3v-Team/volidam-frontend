@@ -1,4 +1,9 @@
-/** Kanban lid kartasi — viewport bo‘yicha eng ko‘rinadigan lidni aniqlash va tiklash */
+/** Kanban lid kartasi — viewport bo'yicha eng ko'rinadigan lidni aniqlash va tiklash */
+/*
+ * scroll ikiga bolinadi: 'top' va 'bottom'.
+ * Agar saqlangan offset container yuqori yarmi bo'lsa, anchor yuqorida chiqadi.
+ * Agar pastki yarmi bo'lsa, anchor pastda chiqadi.
+ */
 
 export const LEAD_ANCHOR_ATTR = "data-lead-id";
 
@@ -26,31 +31,26 @@ function getScrollRootRect(scrollRootRef) {
     return { top: 0, bottom: vh, height: vh };
 }
 
-/**
- * Scroll container ichida eng ko‘p ko‘rinadigan lid id.
- */
 export function getViewportLeadAnchorId(scrollRootRef) {
     if (typeof document === "undefined") return "";
     try {
         const { top, bottom } = getScrollRootRect(scrollRootRef);
         if (bottom <= top) return "";
-        const vCenter = (top + bottom) / 2;
         const nodes = document.querySelectorAll(`[${LEAD_ANCHOR_ATTR}]`);
         let best = "";
-        let bestScore = -Infinity;
+        let bestTop = Infinity;
 
         for (const el of nodes) {
             const id = String(el.getAttribute(LEAD_ANCHOR_ATTR) ?? "").trim();
             if (!id) continue;
             const r = el.getBoundingClientRect();
-            const visTop = Math.max(top, r.top);
+            const visTop    = Math.max(top, r.top);
             const visBottom = Math.min(bottom, r.bottom);
-            const visible = visBottom - visTop;
+            const visible   = visBottom - visTop;
             if (visible < 12) continue;
-            const cy = (r.top + r.bottom) / 2;
-            const score = visible * 1000 - Math.abs(cy - vCenter);
-            if (score > bestScore) {
-                bestScore = score;
+            // viewport ichida eng yuqorida turgan lid (r.top eng kichik)
+            if (r.top < bestTop) {
+                bestTop = r.top;
                 best = id;
             }
         }
@@ -61,10 +61,15 @@ export function getViewportLeadAnchorId(scrollRootRef) {
 }
 
 /**
- * DOMda paydo bo‘lguncha kutib, lid kartasini markazga yaqinlashtiradi.
+ * Anchor elementni scroll container ichida kerakli joyga chiqadi:
+ * top yoki bottom, saqlangan scroll pozitsiyasiga qarab.
+ *
+ * @param {string} leadId
+ * @param {{ scrollRootRef?: React.RefObject, onComplete?: () => void, scrollPosition?: "top"|"bottom" }} opts
+ *        opts.scrollPosition="top" bo'lsa, anchor yuqoriga chiqadi, "bottom" bo'lsa pastga.
  * @returns {() => void} cancel
  */
-export function scheduleLeadAnchorScroll(leadId, { onComplete } = {}) {
+export function scheduleLeadAnchorScroll(leadId, { scrollRootRef, onComplete, scrollPosition = "auto" } = {}) {
     const id = String(leadId ?? "").trim();
     if (!id || typeof window === "undefined") {
         onComplete?.();
@@ -75,11 +80,43 @@ export function scheduleLeadAnchorScroll(leadId, { onComplete } = {}) {
     let frames = 0;
     const MAX = 120;
 
-    const nudge = () => {
-        const el = findLeadAnchorEl(id);
-        if (el) {
+    // Decide anchor alignment if auto
+    function decidePosition(root) {
+        if (scrollPosition === "top" || scrollPosition === "bottom") return scrollPosition;
+        // auto: container scrollTop < height/2 -> "top", aks holda "bottom"
+        if (!root) return "top";
+        return root.scrollTop < (root.scrollHeight - root.clientHeight) / 2 ? "top" : "bottom";
+    }
+
+    const scrollToEl = (el) => {
+        const scrollRoot = scrollRootRef?.current;
+        const align = decidePosition(scrollRoot);
+        if (scrollRoot) {
+            const rootRect = scrollRoot.getBoundingClientRect();
+            const elRect = el.getBoundingClientRect();
+            const currentScrollTop = scrollRoot.scrollTop;
+            let targetScrollTop;
+            if (align === "top") {
+                // Elementning yuqori qismi container yuqorisiga chiqadi
+                targetScrollTop = currentScrollTop + (elRect.top - rootRect.top);
+            } else if (align === "bottom") {
+                // Element pastki qismi container pastiga chiqadi
+                targetScrollTop = currentScrollTop + (elRect.bottom - rootRect.bottom);
+            } else {
+                // fallback: center
+                targetScrollTop =
+                    currentScrollTop +
+                    (elRect.top - rootRect.top) -
+                    rootRect.height / 2 +
+                    elRect.height / 2;
+            }
+            scrollRoot.scrollTop = Math.max(0, targetScrollTop);
+        } else {
+            let block = "center";
+            if (scrollPosition === "top") block = "start";
+            else if (scrollPosition === "bottom") block = "end";
             el.scrollIntoView({
-                block: "center",
+                block,
                 inline: "nearest",
                 behavior: "instant",
             });
@@ -95,12 +132,16 @@ export function scheduleLeadAnchorScroll(leadId, { onComplete } = {}) {
         frames += 1;
         const el = findLeadAnchorEl(id);
         if (el) {
-            nudge();
+            scrollToEl(el);
             requestAnimationFrame(() => {
                 if (cancelled) return;
-                nudge();
+                const el2 = findLeadAnchorEl(id);
+                if (el2) scrollToEl(el2);
                 requestAnimationFrame(() => {
-                    if (!cancelled) nudge();
+                    if (!cancelled) {
+                        const el3 = findLeadAnchorEl(id);
+                        if (el3) scrollToEl(el3);
+                    }
                     finish();
                 });
             });
@@ -119,6 +160,19 @@ export function scheduleLeadAnchorScroll(leadId, { onComplete } = {}) {
     };
 }
 
+// Saqlangan scroll qayerda bo'lganini aniqlash
+function inferScrollAnchorPositionFromSaved(saved) {
+    // Agar saved.windowScrollY yoki saved.scrollTop mavjud bo'lsa
+    // (container scrollTop) ni solishtiramiz.
+    const scrollTop = Number(saved?.windowScrollY ?? saved?.scrollTop ?? 0);
+    const scrollHeight = Number(saved?.scrollHeight ?? 0);
+    const clientHeight = Number(saved?.clientHeight ?? 0);
+    // Agar malumot yetarli bo'lmasa "auto" (oldingi default)
+    if (!scrollTop || !scrollHeight || !clientHeight) return "auto";
+    // scrollTop < yarim => top, >= yarim => bottom
+    return scrollTop < (scrollHeight - clientHeight) / 2 ? "top" : "bottom";
+}
+
 export function shouldRunLeadAnchorAfterScrollRestore(saved) {
     const anchor = String(saved?.anchorLidId ?? "").trim();
     return Boolean(anchor);
@@ -130,5 +184,7 @@ export function scheduleLeadAnchorIfNeeded(saved, opts = {}) {
         opts.onComplete?.();
         return () => {};
     }
-    return scheduleLeadAnchorScroll(String(saved.anchorLidId).trim(), opts);
+    // opts.scrollPosition berilgan bo'lsa uni ishlatamiz, aks holda saved dan aniqlaymiz
+    const scrollPosition = opts.scrollPosition ?? inferScrollAnchorPositionFromSaved(saved);
+    return scheduleLeadAnchorScroll(String(saved.anchorLidId).trim(), { ...opts, scrollPosition });
 }

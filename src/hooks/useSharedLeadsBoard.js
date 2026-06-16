@@ -53,6 +53,9 @@
 
     // ── 2. Birinchi page — barcha columnlarni birga yuklash ──
     const fetchFirstPage = useCallback(() => {
+      // statusFilter majburiy — bo'lmasa 500 xato qaytadi
+      if (!statusFilter) return;
+
       const token = {};
       abortRef.current = token;
 
