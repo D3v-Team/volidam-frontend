@@ -31,6 +31,15 @@ class apiUsers {
         const response = await $api.post(`${BASE_URL}/user/reset-password/${id}`, data, { showSuccessToast: "Parol muvaffaqiyatli o'zgartirildi" });
         return response;
     }
+   static getEmployees = async () => {
+    const [operators, admins] = await Promise.all([
+        apiUsers.getUsers("operator"),
+        apiUsers.getUsers("admin"),
+    ]);
+    const operatorList = operators?.data?.data || operators?.data || [];
+    const adminList = admins?.data?.data || admins?.data || [];
+    return { data: [...operatorList, ...adminList] };
+};
 }
 
 export { apiUsers };
