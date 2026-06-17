@@ -1,16 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
     buildLeadsBoardFilterSig,
     leadsBoardScrollSessionKey,
-    readLeadsBoardScrollSession,
     writeLeadsBoardScrollSession,
 } from "../components/leads/leadsBoardScrollSession";
 import {
     getViewportLeadAnchorId,
-    scheduleLeadAnchorIfNeeded,
 } from "../components/leads/leadsBoardScrollAnchor";
 import {
-    applyRestoredPageVerticalScroll,
     snapshotVerticalScrollToRef,
     verticalSnapshotForSessionWrite,
 } from "../pages/ADtasks/_components/tasksBoardVerticalScroll";
@@ -39,30 +36,17 @@ export function useLeadsBoardScroll({
     const lastGoodVerticalScrollRef = useRef(null);
     const sessionHydratedRef = useRef(false);
     const restoreInProgressLocalRef = useRef(false);
-    const restoredSigRef = useRef("");
     const pageRef = useRef(page);
     const filterSigRef = useRef(filterSig);
     const prevFilterSigRef = useRef(null);
     const explicitAnchorRef = useRef("");
 
-    const [scrollRestoring, setScrollRestoring] = useState(false);
-
     const restoreInProgress = restoreInProgressRef ?? restoreInProgressLocalRef;
 
-    useEffect(() => {
-        pageRef.current = page;
-    }, [page]);
+    useEffect(() => { pageRef.current = page; }, [page]);
+    useEffect(() => { filterSigRef.current = filterSig; }, [filterSig]);
+    useEffect(() => { sessionHydratedRef.current = sessionHydrated; }, [sessionHydrated]);
 
-    useEffect(() => {
-        filterSigRef.current = filterSig;
-    }, [filterSig]);
-
-    useEffect(() => {
-        sessionHydratedRef.current = sessionHydrated;
-    }, [sessionHydrated]);
-
-    // userScrolledRef — foydalanuvchi haqiqatan scroll qilganini belgilaydi
-    // Faqat shu true bo'lganda isNearTop tekshiriladi
     const userScrolledRef = useRef(false);
 
     const flushPersistScroll = useCallback(
@@ -75,34 +59,24 @@ export function useLeadsBoardScroll({
                 String(anchorLidId ?? explicitAnchorRef.current ?? "").trim() ||
                 getViewportLeadAnchorId(mainScrollRef);
 
-            const sy    = Number(vertical?.windowScrollY) || 0;
-            const sf    = Number(vertical?.scrollFraction);
+            const sy   = Number(vertical?.windowScrollY) || 0;
+            const sf   = Number(vertical?.scrollFraction);
             const hasSf = Number.isFinite(sf) && sf >= 0 && sf <= 1;
             const isBottom  = Boolean(vertical?.nearBottom) || (hasSf && sf > 0.95);
             const isNearTop = userScrolledRef.current && !isBottom && sy < 64 && (!hasSf || sf < 0.05);
 
-            if (isNearTop) {
-                console.log("[leads scroll] tepa — restore o'chirildi (maxLoadedPage=1)");
-            } else {
-                console.log("[leads scroll] saqlandi", {
-                    sy, sf: hasSf ? sf.toFixed(2) : "n/a", anchor, page: pageRef.current,
-                });
-            }
-
             writeLeadsBoardScrollSession(sessionKey, {
-                filterSig:      filterSigRef.current,
-                windowScrollY:  isNearTop ? 0   : sy,
-                scrollFraction: isNearTop ? 0   : isBottom ? 1 : (hasSf ? sf : 0),
-                nearBottom:     isNearTop ? false : vertical?.nearBottom,
-                // applyRestoredPageVerticalScroll kutadigan nomlar:
+                filterSig:       filterSigRef.current,
+                windowScrollY:   isNearTop ? 0 : sy,
+                scrollFraction:  isNearTop ? 0 : isBottom ? 1 : (hasSf ? sf : 0),
+                nearBottom:      isNearTop ? false : vertical?.nearBottom,
                 docScrollHeight: vertical?.docScrollHeight,
                 viewportHeight:  vertical?.viewportHeight,
-                // writeLeadsBoardScrollSession scrollPosition uchun:
-                scrollHeight:   vertical?.docScrollHeight,
-                clientHeight:   vertical?.viewportHeight,
+                scrollHeight:    vertical?.docScrollHeight,
+                clientHeight:    vertical?.viewportHeight,
                 boardScrollLeft: boardScrollRef.current?.scrollLeft ?? 0,
-                maxLoadedPage:  isNearTop ? 1 : pageRef.current,
-                anchorLidId:    isNearTop ? "" : anchor,
+                maxLoadedPage:   isNearTop ? 1 : pageRef.current,
+                anchorLidId:     isNearTop ? "" : anchor,
             });
             if (anchorLidId && !isNearTop) explicitAnchorRef.current = String(anchorLidId);
         },
@@ -130,11 +104,10 @@ export function useLeadsBoardScroll({
         }, 200);
     }, [flushPersistScroll]);
 
-    // Faqat filter haqiqatan o'zgarganda scroll reset
+    // Filter o'zgarganda scroll tepaga reset
     useEffect(() => {
         if (prevFilterSigRef.current === filterSig) return;
         prevFilterSigRef.current = filterSig;
-        restoredSigRef.current = "";
         explicitAnchorRef.current = "";
         lastGoodVerticalScrollRef.current = null;
         userScrolledRef.current = false;
@@ -143,6 +116,7 @@ export function useLeadsBoardScroll({
         if (boardScrollRef.current) boardScrollRef.current.scrollLeft = 0;
     }, [filterSig]);
 
+    // Scroll hodisalari
     useEffect(() => {
         const el = mainScrollRef.current;
         if (!el) return;
@@ -163,12 +137,14 @@ export function useLeadsBoardScroll({
         return () => el.removeEventListener("scroll", onScroll);
     }, [schedulePersistScroll]);
 
+    // Page/filter o'zgarganda persist
     useEffect(() => {
         if (restoreInProgress.current) return;
         if (!sessionHydrated && page <= 1) return;
         flushPersistScroll();
     }, [page, filterSig, sessionHydrated, flushPersistScroll, restoreInProgress]);
 
+    // Tab yopilganda / unmount da persist
     useEffect(() => {
         const persist = () => {
             if (scrollPersistTimerRef.current != null) {
@@ -179,101 +155,16 @@ export function useLeadsBoardScroll({
                 flushPersistScroll();
             }
         };
-
         const onHidden = () => {
-            if (typeof document === "undefined" || document.visibilityState !== "hidden") return;
+            if (document.visibilityState !== "hidden") return;
             persist();
         };
-
         document.addEventListener("visibilitychange", onHidden);
         return () => {
             document.removeEventListener("visibilitychange", onHidden);
             persist();
         };
     }, [sessionKey, flushPersistScroll]);
-
-    // Scroll / anchor tiklash — barcha sahifalar yuklangandan keyin
-    useEffect(() => {
-        if (!ready || !sessionHydrated) return;
-        if (restoredSigRef.current === filterSig) return;
-
-        const saved = readLeadsBoardScrollSession(sessionKey);
-        if (!saved || String(saved.filterSig ?? "") !== filterSig) {
-            restoredSigRef.current = filterSig;
-            return;
-        }
-
-        const anchorLidId = String(saved.anchorLidId ?? "").trim();
-        const savedY = Number(saved.windowScrollY) || 0;
-        const savedBoardLeft = Number(saved.boardScrollLeft) || 0;
-        const hasScroll = savedY > 0 || saved.nearBottom || saved.nearCenter;
-        const hasAnchor = Boolean(anchorLidId);
-
-        if (!hasScroll && !hasAnchor && savedBoardLeft <= 0) {
-            restoredSigRef.current = filterSig;
-            return;
-        }
-
-        restoreInProgress.current = true;
-        setScrollRestoring(true);
-        restoredSigRef.current = filterSig;
-
-        const boardEl = boardScrollRef.current;
-        let cancelAnchor = () => {};
-        let cancelVertical = () => {};
-
-        const finishRestore = () => {
-            restoreInProgress.current = false;
-            setScrollRestoring(false);
-            userScrolledRef.current = false;
-            snapshotVerticalScrollToRef(lastGoodVerticalScrollRef, mainScrollRef);
-            if (boardEl && savedBoardLeft > 0) {
-                boardEl.scrollLeft = savedBoardLeft;
-            }
-            flushPersistScroll();
-        };
-
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                if (hasAnchor) {
-                    cancelAnchor = scheduleLeadAnchorIfNeeded(saved, {
-                        scrollPosition: "top",
-                        scrollRootRef: mainScrollRef,
-                        onComplete: finishRestore,
-                    });
-                    return;
-                }
-
-                if (boardEl && savedBoardLeft > 0) {
-                    boardEl.scrollLeft = savedBoardLeft;
-                }
-
-                // nearCenter bo'lsa — scrollFraction bilan tiklash (fraction session da saqlangan)
-                // applyRestoredPageVerticalScroll scrollFraction ni o'zi handle qiladi
-                cancelVertical = applyRestoredPageVerticalScroll(saved, {
-                    scrollRootRef: mainScrollRef,
-                    onApplied: () => {
-                        if (boardEl && savedBoardLeft > 0) {
-                            boardEl.scrollLeft = savedBoardLeft;
-                        }
-                    },
-                    onComplete: finishRestore,
-                });
-            });
-        });
-
-        const restoreTimer = window.setTimeout(() => {
-            if (restoreInProgress.current) finishRestore();
-        }, 3000);
-
-        return () => {
-            cancelAnchor?.();
-            cancelVertical?.();
-            window.clearTimeout(restoreTimer);
-            restoreInProgress.current = false;
-            setScrollRestoring(false);
-        };
-    }, [ready, sessionHydrated, filterSig, sessionKey, flushPersistScroll, restoreInProgress]);
 
     return {
         mainScrollRef,
@@ -282,8 +173,9 @@ export function useLeadsBoardScroll({
         schedulePersistScroll,
         sessionHydratedRef,
         restoreInProgressRef: restoreInProgress,
-        scrollRestoring,
+        // scrollRestoring har doim false — restore logikasi olib tashlandi
+        scrollRestoring: false,
         filterSig,
         persistNow,
     };
-};
+}

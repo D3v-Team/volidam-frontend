@@ -49,7 +49,7 @@ export function getInitialLeadsBoardFilters(roleScope = "default") {
  */
 export function readLeadsBoardScrollSession(key) {
     try {
-        const raw = sessionStorage.getItem(key);
+        const raw = localStorage.getItem(key);
         if (!raw) return null;
         const o = JSON.parse(raw);
         if (!o || typeof o !== "object") return null;
@@ -100,7 +100,7 @@ export function writeLeadsBoardScrollSession(key, data) {
                 extra.scrollPosition = "bottom";
             }
         }
-        sessionStorage.setItem(
+        localStorage.setItem(
             key,
             JSON.stringify({ ...data, ...extra, ts: Date.now() })
         );

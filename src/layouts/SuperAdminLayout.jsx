@@ -11,13 +11,12 @@ const links = [
 ];
 import { Box, Flex } from "@chakra-ui/react";
 import SuperAdminHeader from "../pages/Dashboard/SuperAdminHeader";
-import LeadDetailPage from "../pages/Leads/LeadDetailPage";
 
 export default function SuperAdminLayout() {
     return (
-        <Flex direction="column" minH="100vh">
+        <Flex direction="column" h="100vh" overflow="hidden">
             <SuperAdminHeader />
-            <Box flex="1" minW={0} w="100%" maxW="100vw" overflowX="hidden">
+            <Box flex="1" minH={0} minW={0} w="100%" maxW="100vw" overflowX="hidden" display="flex" flexDirection="column">
                 <Outlet />
             </Box>
         </Flex>

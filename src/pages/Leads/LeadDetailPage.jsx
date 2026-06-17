@@ -1,19 +1,16 @@
 import {
   Box,
   Button,
-  Center,
-  Flex,
   Grid,
   GridItem,
   HStack,
   Icon,
   SimpleGrid,
   Skeleton,
-  Stack,
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, Clock, ShieldUser, User } from "lucide-react";
 import { apiLids } from "../../Services/api/Lids";
@@ -49,6 +46,8 @@ export default function LeadDetailPage() {
   const { pathname } = useLocation();
   const user = useAuthStore((s) => s.user);
 
+  const listPath = getLeadsBasePath(pathname);
+
   const [lid, setLid] = useState(null);
   const [statuses, setStatuses] = useState([]);
   const [fetching, setFetching] = useState(true);
@@ -67,11 +66,6 @@ export default function LeadDetailPage() {
     lid?.assignee?.id === user?.id;
 
   const canEditValues = canEditLid;
-
-  const listPath = getLeadsBasePath(pathname);
-
-  const isPanel =
-    pathname.startsWith("/admin") || pathname.startsWith("/operator");
 
   // ─── Data loader ───────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -120,10 +114,6 @@ export default function LeadDetailPage() {
   };
 
   // ─── Save lid ──────────────────────────────────────────────────────────────
-  // Tartib:
-  //   1. apiLids.update  — fio, telefon, ota_ona_fio, values (child_status_id ham)
-  //   2. status o'zgansa — apiLids.updateStatus
-  //   3. child_status o'zgansa — apiLids.updateChildStatus (PUT /lids/{id}/child-status)
   const handleSaveLid = async ({
     fio,
     telefon_raqam,
@@ -136,7 +126,6 @@ export default function LeadDetailPage() {
     try {
       const values = buildLidValuesPayload(columnDefs, valueForm);
 
-      // 1. Asosiy lid ma'lumotlarini yangilash
       await apiLids.update(lid.id, {
         fio,
         telefon_raqam,
@@ -145,14 +134,12 @@ export default function LeadDetailPage() {
         values,
       });
 
-      // 2. Status o'zgangan bo'lsa — alohida status endpointiga
       const currentStatus = String(lid.status?.id || lid.status_id || "");
       const newStatus = String(status_id || "");
       if (newStatus && newStatus !== currentStatus) {
         await apiLids.updateStatus(lid.id, newStatus, child_status_id ?? null);
       }
 
-      // 3. Child status o'zgangan bo'lsa — alohida child-status endpointiga
       const currentChild = String(lid.child_status_id ?? "");
       const newChild = String(child_status_id ?? "");
       if (newChild !== currentChild) {
@@ -196,132 +183,195 @@ export default function LeadDetailPage() {
   const statusColor = lid?.status?.color || "#e91e63";
   const creatorName = lid?.created_by_name || lid?.creator?.full_name || "—";
 
+  // Barcha lidlar (back button) - history-ni ko'rsatish uchun
+  const backButtonRef = useRef(null);
+
+  // "Back" ni bosganda tarixga orqaga qaytish va uzun bosganda history-ni ko'rsatish
+  const handleBackMouseDown = (e) => {
+    // start timer for long press
+    backButtonRef.current = setTimeout(() => {
+      // On long press, show browser history
+      if (window?.history?.length > 1) {
+        // Most browsers don't allow direct history list access for security. 
+        // Instead, fallback: show confirm dialog to choose how many steps back to go.
+        const stepsBack = prompt(
+          "Necha qadam orqaga qaytmoqchisiz? (1 eng yaqin sahifa)",
+          "1"
+        );
+        const steps = parseInt(stepsBack, 10);
+        if (!isNaN(steps) && steps > 0 && steps <= window.history.length - 1) {
+          window.history.go(-steps);
+        }
+      }
+    }, 500); // 500ms long press
+  };
+  const handleBackMouseUp = (e) => {
+    clearTimeout(backButtonRef.current);
+  };
+  const handleBackClick = (e) => {
+    // "short" click (released before 500ms): back
+    if (backButtonRef.current) {
+      clearTimeout(backButtonRef.current);
+      window.history.back();
+    }
+  };
+
+  // Faqat o'z sahifamiz scrolli, brauzerniki emas.
   return (
     <Box
-      flex={isPanel ? "1" : undefined}
-      h={isPanel ? undefined : "auto"}
-      minH={isPanel ? 0 : "100vh"}
-      overflowY="auto"
-      overflowX="hidden"
       w="100%"
-      minW={0}
+      minH="100vh"
       bg="bg"
-      pb={{ base: 8, md: 12 }}
+      pb={0}
+      sx={{
+        overflowY: "auto", // only this page scrolls, browser remains at top
+        maxHeight: "100vh",
+      }}
     >
       <Box
         w="100%"
-        px={{ base: 3, sm: 4, md: 6, lg: 8 }}
-        py={{ base: 3, md: 6 }}
+        minH="100vh"
+        display="flex"
+        flexDirection="column"
+        pb={{ base: 8, md: 12 }}
+        position="relative"
       >
-        <Button
-          {...volidamGhostButton}
-          size="sm"
-          leftIcon={<ArrowLeft size={16} />}
-          mb={{ base: 3, md: 5 }}
-          onClick={() => navigate(listPath)}
+        {/* "Barcha lidlar" — brauzer back button vazifasini bajaradi */}
+        <Box
+          w="100%"
+          px={{ base: 3, sm: 4, md: 6, lg: 8 }}
+          pt={{ base: 3, md: 6 }}
+          pb={0}
+          // Barcha lidlar buttoni sticky, background inherit qilinadi
+          position="sticky"
+          top={0}
+          zIndex={10}
+          bg="bg"
         >
-          Barcha lidlar
-        </Button>
-
-        {fetching ? (
-          <VStack spacing={4} align="stretch">
-            <Skeleton h="120px" borderRadius="xl" />
-            <Skeleton h="280px" borderRadius="xl" />
-          </VStack>
-        ) : !lid ? (
-          <LeadDetailSection title="Lid topilmadi">
-            <Text color="textSecondary" textAlign="center" py={8}>
-              Ma&apos;lumot mavjud emas
-            </Text>
-          </LeadDetailSection>
-        ) : (
-          <VStack align="stretch" spacing={{ base: 4, md: 6 }} w="100%">
-            {/* ── Asosiy ma'lumotlar ── */}
-            <LeadDetailSection
-              title="Asosiy ma'lumotlar"
-              subtitle="FIO, telefon va status"
-            >
-              <Box
-                borderLeftWidth="4px"
-                borderColor={statusColor}
-                pl={{ base: 3, md: 4 }}
-              >
-                <LeadDetailLidSection
-                  lid={lid}
-                  statuses={statuses}
-                  canEdit={canEditLid}
-                  saving={savingLid}
-                  onSave={handleSaveLid}
-                />
-              </Box>
-
-              <SimpleGrid
-                columns={{ base: 1, sm: 2, lg: 4 }}
-                spacing={4}
-                mt={6}
-                pt={6}
-                borderTopWidth="1px"
-                borderColor="border"
-              >
-                <MetaRow icon={User} label="Yaratuvchi" value={creatorName} />
-                <MetaRow
-                  icon={ShieldUser}
-                  label="Biriktirilgan shaxs"
-                  value={
-                    lid.assignee?.full_name || "Biriktirilgan shaxs mavjud emas"
-                  }
-                />
-                <MetaRow
-                  icon={Clock}
-                  label="Yaratilgan"
-                  value={formatDateTime(lid.createdAt)}
-                />
-                <MetaRow
-                  icon={Clock}
-                  label="Yangilangan"
-                  value={formatDateTime(lid.updatedAt)}
-                />
-              </SimpleGrid>
+          <Button
+            {...volidamGhostButton}
+            size="sm"
+            leftIcon={<ArrowLeft size={16} />}
+            mb={{ base: 3, md: 5 }}
+            mt={12}
+            // browser back: short click, hold for history prompt
+            onMouseDown={handleBackMouseDown}
+            onMouseUp={handleBackMouseUp}
+            onMouseLeave={handleBackMouseUp}
+            onClick={handleBackClick}
+            // You may want to add a title for accessibility:
+            title='Ortga qaytish. Uzoq bosing – tarix (history) variantlarini ko‘rish.'
+          >
+            Barcha lidlar
+          </Button>
+        </Box>
+        <Box
+          w="100%"
+          flex="1"
+          minH={0}
+          px={{ base: 3, sm: 4, md: 6, lg: 8 }}
+          py={0}
+        >
+          {fetching ? (
+            <VStack spacing={4} align="stretch">
+              <Skeleton h="120px" borderRadius="xl" />
+              <Skeleton h="280px" borderRadius="xl" />
+            </VStack>
+          ) : !lid ? (
+            <LeadDetailSection title="Lid topilmadi">
+              <Text color="textSecondary" textAlign="center" py={8}>
+                Ma&apos;lumot mavjud emas
+              </Text>
             </LeadDetailSection>
+          ) : (
+            <VStack align="stretch" spacing={{ base: 4, md: 6 }} w="100%">
+              {/* ── Asosiy ma'lumotlar ── */}
+              <LeadDetailSection
+                title="Asosiy ma'lumotlar"
+                subtitle="FIO, telefon va status"
+              >
+                <Box
+                  borderLeftWidth="4px"
+                  borderColor={statusColor}
+                  pl={{ base: 3, md: 4 }}
+                >
+                  <LeadDetailLidSection
+                    lid={lid}
+                    statuses={statuses}
+                    canEdit={canEditLid}
+                    saving={savingLid}
+                    onSave={handleSaveLid}
+                  />
+                </Box>
 
-            {/* ── Qo'shimcha maydonlar + Kolonkalar boshqaruvi ── */}
-            <Grid
-              templateColumns={{
-                base: "1fr",
-                xl: canManageColumns ? "1fr minmax(280px, 320px)" : "1fr",
-              }}
-              gap={{ base: 4, md: 6 }}
-              w="100%"
-              alignItems="start"
-            >
-              <GridItem minW={0} w="100%">
-                <LeadValueFieldsSection
-                  columns={columnDefs}
-                  values={valueForm}
-                  dirty={valuesDirty}
-                  readOnly={!canEditValues}
-                  onChange={handleValueChange}
-                  onSave={canEditValues ? handleSaveValues : undefined}
-                  saving={savingValues}
-                />
-              </GridItem>
+                <SimpleGrid
+                  columns={{ base: 1, sm: 2, lg: 4 }}
+                  spacing={4}
+                  mt={6}
+                  pt={6}
+                  borderTopWidth="1px"
+                  borderColor="border"
+                >
+                  <MetaRow icon={User} label="Yaratuvchi" value={creatorName} />
+                  <MetaRow
+                    icon={ShieldUser}
+                    label="Biriktirilgan shaxs"
+                    value={
+                      lid.assignee?.full_name || "Biriktirilgan shaxs mavjud emas"
+                    }
+                  />
+                  <MetaRow
+                    icon={Clock}
+                    label="Yaratilgan"
+                    value={formatDateTime(lid.createdAt)}
+                  />
+                  <MetaRow
+                    icon={Clock}
+                    label="Yangilangan"
+                    value={formatDateTime(lid.updatedAt)}
+                  />
+                </SimpleGrid>
+              </LeadDetailSection>
 
-              {canManageColumns && (
+              {/* ── Qo'shimcha maydonlar + Kolonkalar boshqaruvi ── */}
+              <Grid
+                templateColumns={{
+                  base: "1fr",
+                  xl: canManageColumns ? "1fr minmax(280px, 320px)" : "1fr",
+                }}
+                gap={{ base: 4, md: 6 }}
+                w="100%"
+                alignItems="start"
+              >
                 <GridItem minW={0} w="100%">
-                  <Box position={{ base: "static", xl: "sticky" }} top={4}>
-                    <LidColumnsManageSection
-                      columns={columnDefs}
-                      loading={fetching}
-                      onRefresh={loadData}
-                      canManage={canManageColumns}
-                      canEditColumn={false}
-                    />
-                  </Box>
+                  <LeadValueFieldsSection
+                    columns={columnDefs}
+                    values={valueForm}
+                    dirty={valuesDirty}
+                    readOnly={!canEditValues}
+                    onChange={handleValueChange}
+                    onSave={canEditValues ? handleSaveValues : undefined}
+                    saving={savingValues}
+                  />
                 </GridItem>
-              )}
-            </Grid>
-          </VStack>
-        )}
+
+                {canManageColumns && (
+                  <GridItem minW={0} w="100%">
+                    <Box position={{ base: "static", xl: "sticky" }} top={4}>
+                      <LidColumnsManageSection
+                        columns={columnDefs}
+                        loading={fetching}
+                        onRefresh={loadData}
+                        canManage={canManageColumns}
+                        canEditColumn={false}
+                      />
+                    </Box>
+                  </GridItem>
+                )}
+              </Grid>
+            </VStack>
+          )}
+        </Box>
       </Box>
     </Box>
   );
