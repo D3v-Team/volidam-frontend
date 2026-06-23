@@ -6,7 +6,7 @@ import { toastService } from "../../utils/toast";
 import handleApiError from "./handleError";
 
 
-export const BASE_URL = "https://api.volidam.usdsoft.uz/api/v1";
+export const BASE_URL = "https://api.crm-volidam.uz/api/v1";
 
 export const $api = axios.create({
     baseURL: `${BASE_URL}`,
